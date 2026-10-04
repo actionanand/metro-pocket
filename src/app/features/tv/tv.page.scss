@@ -7,7 +7,7 @@
   font-size: 11px;
   letter-spacing: 0.12em;
   font-weight: 700;
-  color: #6851af;
+  color: var(--mp-secondary);
 }
 h1 {
   font-size: 32px;
@@ -21,14 +21,14 @@ h1 {
 .empty {
   margin: 28px 0;
   padding: 28px;
-  border: 1px dashed #a79bd2;
+  border: 1px dashed var(--mp-secondary);
   border-radius: 20px;
   text-align: center;
-  background: color-mix(in srgb, #ebe7fb 48%, transparent);
+  background: color-mix(in srgb, var(--mp-surface-purple) 65%, transparent);
 }
 .empty ion-icon {
   font-size: 38px;
-  color: #6851af;
+  color: var(--mp-secondary);
 }
 .empty h2 {
   font-size: 20px;
@@ -39,9 +39,11 @@ h1 {
   color: var(--ion-color-step-650);
 }
 .finder {
-  opacity: 0.68;
   padding: 16px;
   border-radius: 20px;
-  background: var(--ion-item-background, #fff);
-  border: 1px solid var(--ion-color-step-150);
+  background: var(--mp-card);
+  border: 1px solid var(--mp-border);
+}
+.finder-unavailable {
+  background: color-mix(in srgb, var(--mp-card) 78%, var(--mp-page));
 }

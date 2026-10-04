@@ -54,7 +54,9 @@
           </p>
           @if(pack.networkAsOf){
           <p>Data as of {{ pack.networkAsOf }}</p>
-          }@if(pack.state === 'downloading'){<ion-progress-bar [value]="progress(pack)"></ion-progress-bar>
+          } @if(size(pack.downloadBytes)){
+          <p>Download {{ size(pack.downloadBytes) }}</p>
+          } @if(pack.state === 'downloading'){<ion-progress-bar [value]="progress(pack)"></ion-progress-bar>
           <p>Downloading {{ installer.progress()[pack.id] || '' }}%</p>
           }@if(pack.state === 'failed'){
           <p class="danger">{{ pack.error }}</p>
@@ -67,9 +69,10 @@
           (click)="requestDelete(pack)"
           aria-label="Delete {{ pack.name }}"
           ><ion-icon name="trash-outline"></ion-icon></ion-button
-        >}@else if(pack.state === 'downloading'){<ion-spinner slot="end"></ion-spinner>}@else {<ion-button
-          slot="end"
-          (click)="install(pack)"
+        >}@else if(pack.state === 'update-available'){<ion-note slot="end"
+          >Installed v{{ pack.installed?.version }} · Latest v{{ pack.version }}</ion-note
+        ><ion-button slot="end" (click)="install(pack)">Update</ion-button>}@else if(pack.state ===
+        'downloading'){<ion-spinner slot="end"></ion-spinner>}@else {<ion-button slot="end" (click)="install(pack)"
           >{{ pack.state === 'update-available' ? 'Update' : pack.state === 'failed' ? 'Retry' : 'Download'
           }}</ion-button
         >}</ion-item

@@ -10,7 +10,6 @@ import {
   IonLabel,
   IonSearchbar,
   IonSelect,
-  IonSelectOption,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular';
@@ -30,7 +29,6 @@ import { tvOutline } from 'ionicons/icons';
     IonLabel,
     IonSearchbar,
     IonSelect,
-    IonSelectOption,
     IonTitle,
     IonToolbar,
     RouterLink,
@@ -39,6 +37,7 @@ import { tvOutline } from 'ionicons/icons';
   styleUrls: ['tv.page.scss'],
 })
 export class TvPage {
+  readonly dataAvailable = signal(false);
   readonly query = signal('');
   constructor() {
     addIcons({ tvOutline });

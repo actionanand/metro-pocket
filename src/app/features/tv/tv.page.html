@@ -14,18 +14,22 @@
       <p>Install the TV Channels data pack to look up provider and regional channel mappings offline.</p>
       <ion-button routerLink="/offline-data">Browse offline data</ion-button>
     </section>
-    <section class="finder">
+    <section class="finder" [class.finder-unavailable]="!dataAvailable()" aria-label="TV channel search">
       <ion-item
         ><ion-label>Provider</ion-label
-        ><ion-select placeholder="Choose after installation" disabled
-          ><ion-select-option>JioTV+</ion-select-option></ion-select
-        ></ion-item
+        ><ion-select
+          placeholder="Available after installing TV data"
+          [disabled]="!dataAvailable()"></ion-select></ion-item
       ><ion-searchbar
         [value]="query()"
         (ionInput)="query.set($any($event.detail.value) ?? '')"
+        [disabled]="!dataAvailable()"
         placeholder="Search channel or number"
         aria-label="Search channel or number"></ion-searchbar>
-      <p>Results will clearly show “Not available in installed data” when a mapping is not present.</p>
+      <p>
+        Provider selection and search become available when TV data is installed. Missing mappings will show “Not
+        available in installed data”.
+      </p>
     </section>
   </main></ion-content
 >

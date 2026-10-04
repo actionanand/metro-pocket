@@ -104,4 +104,8 @@ export class OfflineDataPage {
   progress(pack: PackViewModel): number {
     return (this.installer.progress()[pack.id] ?? 0) / 100;
   }
+  size(bytes?: number): string | null {
+    if (!bytes) return null;
+    return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
 }

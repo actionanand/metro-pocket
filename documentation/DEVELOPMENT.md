@@ -13,3 +13,5 @@ npm run build:gh
 ```
 
 Production data belongs in the separate release repository. Tests use small fixtures only and those records are never shown in production UI.
+
+Theme can be checked from Settings. System follows the browser/OS setting, while Light and Dark override it for the current app preference.

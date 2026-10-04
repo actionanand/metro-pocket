@@ -2,7 +2,7 @@
   display: block;
 }
 .home-content {
-  --background: linear-gradient(145deg, #f7fbff 0%, #eef5f1 55%, #f9f7ef 100%);
+  --background: var(--mp-page);
 }
 .shell {
   max-width: 720px;
@@ -21,7 +21,7 @@
   height: 40px;
   border-radius: 13px;
   color: #fff;
-  background: #125b49;
+  background: var(--mp-primary);
   font-weight: 800;
   font-size: 22px;
 }
@@ -31,7 +31,7 @@
 .brand p,
 .eyebrow {
   margin: 0;
-  color: #487064;
+  color: var(--mp-muted);
   font-size: 11px;
   letter-spacing: 0.12em;
   font-weight: 700;
@@ -71,16 +71,16 @@ h2 {
   padding: 19px;
   text-decoration: none;
   color: inherit;
-  background: var(--ion-item-background, #fff);
+  background: var(--mp-card);
   box-shadow: 0 10px 26px #092c2210;
-  border: 1px solid #d8e8e0;
+  border: 1px solid var(--mp-border);
   min-height: 93px;
 }
 .feature.metro {
-  border-left: 5px solid #238469;
+  border-left: 5px solid var(--mp-primary-strong);
 }
 .feature.tv {
-  border-left: 5px solid #6957b7;
+  border-left: 5px solid var(--mp-secondary);
 }
 .feature-icon {
   display: grid;
@@ -91,12 +91,12 @@ h2 {
   font-size: 25px;
 }
 .metro .feature-icon {
-  background: #dff5ec;
-  color: #176c54;
+  background: var(--mp-surface-green);
+  color: var(--mp-primary-strong);
 }
 .tv .feature-icon {
-  background: #ebe7fb;
-  color: #59459c;
+  background: var(--mp-surface-purple);
+  color: var(--mp-secondary-strong);
 }
 .feature > span:nth-child(2) {
   flex: 1;
@@ -122,8 +122,8 @@ h2 {
   margin-top: 30px;
   padding: 15px;
   border-radius: 16px;
-  background: #dcece4;
-  color: #23463a;
+  background: var(--mp-surface-green);
+  color: var(--ion-text-color);
 }
 .data-prompt ion-icon {
   font-size: 25px;
@@ -136,7 +136,7 @@ h2 {
   font-size: 13px;
 }
 .data-prompt ion-button {
-  --color: #125b49;
+  --color: var(--mp-primary);
 }
 nav {
   display: flex;
@@ -144,20 +144,27 @@ nav {
   padding: 28px 4px 0;
 }
 nav a {
-  color: #315f51;
+  color: var(--mp-primary);
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
 }
-@media (prefers-color-scheme: dark) {
-  .home-content {
-    --background: linear-gradient(145deg, #101a1a, #142720);
+.feature:hover {
+  border-color: var(--mp-primary-strong);
+  transform: translateY(-1px);
+}
+.feature:focus-visible {
+  color: inherit;
+}
+@media (max-width: 359px) {
+  .shell {
+    padding-inline: 16px;
+  }
+  .hero {
+    padding-top: 42px;
   }
   .feature {
-    border-color: #29463c;
-  }
-  .data-prompt {
-    background: #1d4035;
-    color: #d4eee0;
+    gap: 12px;
+    padding: 16px;
   }
 }

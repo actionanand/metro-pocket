@@ -17,19 +17,26 @@
       <p>MetroPocket never bundles production station data. Install a city pack when it becomes available.</p>
       <ion-button routerLink="/offline-data">Browse offline data</ion-button>
     </section>
-    <section class="planner" aria-label="Route planner preview">
+    <section class="planner" [class.planner-unavailable]="!dataAvailable()" aria-label="Route planner">
       <label
         >From<ion-searchbar
           [value]="from()"
           (ionInput)="from.set($any($event.detail.value) ?? '')"
+          [disabled]="!dataAvailable()"
           placeholder="Search station"
           aria-label="Search source station"></ion-searchbar></label
-      ><button class="swap" type="button" (click)="swap()" aria-label="Swap source and destination">
+      ><button
+        class="swap"
+        type="button"
+        (click)="swap()"
+        [disabled]="!dataAvailable()"
+        aria-label="Swap source and destination">
         <ion-icon name="swap-vertical-outline"></ion-icon></button
       ><label
         >To<ion-searchbar
           [value]="to()"
           (ionInput)="to.set($any($event.detail.value) ?? '')"
+          [disabled]="!dataAvailable()"
           placeholder="Search station"
           aria-label="Search destination station"></ion-searchbar></label
       ><ion-note>Station autocomplete is available after installing a city pack.</ion-note

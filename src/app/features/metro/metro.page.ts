@@ -34,9 +34,10 @@ import { swapVerticalOutline, trainOutline } from 'ionicons/icons';
   styleUrls: ['metro.page.scss'],
 })
 export class MetroPage {
+  readonly dataAvailable = signal(false);
   readonly from = signal('');
   readonly to = signal('');
-  readonly hasSelection = computed(() => Boolean(this.from().trim() && this.to().trim()));
+  readonly hasSelection = computed(() => this.dataAvailable() && Boolean(this.from().trim() && this.to().trim()));
   constructor() {
     addIcons({ swapVerticalOutline, trainOutline });
   }
