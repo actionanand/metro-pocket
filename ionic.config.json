@@ -1,0 +1,7 @@
+{
+  "name": "metro-pocket",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
