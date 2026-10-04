@@ -1,20 +1,40 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Blank
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
-
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
-  </div>
+<ion-content [fullscreen]="true" class="home-content">
+  <main class="shell">
+    <header class="brand">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <div>
+        <p>OFFLINE UTILITY</p>
+        <h1>MetroPocket</h1>
+      </div>
+      <a routerLink="/settings" aria-label="Open settings"><ion-icon name="settings-outline"></ion-icon></a>
+    </header>
+    <section class="hero">
+      <p class="eyebrow">Information that stays with you</p>
+      <h2>Travel and TV answers,<br />even when you’re offline.</h2>
+      <p>Download only the data packs you need. No account, tracking, or live-location access.</p>
+    </section>
+    <section aria-label="Main features" class="feature-list">
+      <a class="feature metro" routerLink="/metro"
+        ><span class="feature-icon"><ion-icon name="train-outline"></ion-icon></span
+        ><span><strong>Metro</strong><small>Routes · Stations · Interchanges · Time</small></span
+        ><ion-icon name="arrow-forward-outline"></ion-icon
+      ></a>
+      <a class="feature tv" routerLink="/tv"
+        ><span class="feature-icon"><ion-icon name="tv-outline"></ion-icon></span
+        ><span><strong>TV Channels</strong><small>DTH · Cable · Channel Numbers</small></span
+        ><ion-icon name="arrow-forward-outline"></ion-icon
+      ></a>
+    </section>
+    <section class="data-prompt">
+      <ion-icon name="cloud-download-outline"></ion-icon>
+      <div>
+        <strong>Ready for offline use</strong>
+        <p>Install a metro or TV data pack to begin searching.</p>
+      </div>
+      <ion-button fill="clear" routerLink="/offline-data">Data</ion-button>
+    </section>
+    <nav aria-label="More MetroPocket pages">
+      <a routerLink="/offline-data">Offline Data</a><a routerLink="/about">About & privacy</a>
+    </nav>
+  </main>
 </ion-content>

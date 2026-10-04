@@ -68,3 +68,13 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Generated Android platform, release signing material and local release artifacts
+/android/
+*.jks
+*.keystore
+*-key.pem
+*-cert.pem
+keystore.b64.txt
+.env
+.env.*

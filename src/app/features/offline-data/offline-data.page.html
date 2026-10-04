@@ -1,0 +1,84 @@
+<ion-header
+  ><ion-toolbar
+    ><ion-buttons slot="start"><ion-back-button defaultHref="/home"></ion-back-button></ion-buttons
+    ><ion-title>Offline Data</ion-title
+    ><ion-buttons slot="end"
+      ><ion-button (click)="checkForUpdates()" [disabled]="loading()" aria-label="Check for updates"
+        ><ion-icon name="refresh-outline"></ion-icon></ion-button></ion-buttons></ion-toolbar></ion-header
+><ion-content
+  ><main class="page">
+    <p class="eyebrow">OFFLINE DATA</p>
+    <h1>Your local data packs</h1>
+    <p class="intro">
+      Downloads are verified before installation and stay on this device. An internet connection is only needed to check
+      for updates or download a pack.
+    </p>
+    @if (loading()) {
+    <div class="status"><ion-spinner></ion-spinner> Checking available data packs…</div>
+    } @if (error()) {
+    <div class="status error">
+      <ion-icon name="warning-outline"></ion-icon
+      ><span><strong>Unable to check for updates</strong><br />{{ error() }}</span
+      ><ion-button size="small" (click)="checkForUpdates()">Retry</ion-button>
+    </div>
+    } @if (!loading() && !error() && packs().length === 0) {
+    <div class="status">
+      <ion-icon name="cloud-download-outline"></ion-icon
+      ><span
+        ><strong>No data packs are listed yet</strong><br />The future public data repository can be connected in
+        environment configuration.</span
+      >
+    </div>
+    } @if (metro().length) {
+    <h2>Metro</h2>
+    <ion-list inset="true"
+      >@for (pack of metro(); track pack.id) {
+      <ng-container [ngTemplateOutlet]="packCard" [ngTemplateOutletContext]="{ $implicit: pack }"></ng-container>
+      }</ion-list
+    >
+    } @if (tv().length) {
+    <h2>TV</h2>
+    <ion-list inset="true"
+      >@for (pack of tv(); track pack.id) {
+      <ng-container [ngTemplateOutlet]="packCard" [ngTemplateOutletContext]="{ $implicit: pack }"></ng-container>
+      }</ion-list
+    >
+    }
+    <ng-template #packCard let-pack
+      ><ion-item
+        ><ion-label
+          ><h3>{{ pack.name }}</h3>
+          <p>
+            {{ pack.description || (pack.type === 'metro' ? 'Operational network data' : 'DTH and supported cable
+            mappings') }}
+          </p>
+          @if(pack.networkAsOf){
+          <p>Data as of {{ pack.networkAsOf }}</p>
+          }@if(pack.state === 'downloading'){<ion-progress-bar [value]="progress(pack)"></ion-progress-bar>
+          <p>Downloading {{ installer.progress()[pack.id] || '' }}%</p>
+          }@if(pack.state === 'failed'){
+          <p class="danger">{{ pack.error }}</p>
+          }</ion-label
+        >@if(pack.state === 'installed'){<ion-note slot="end">Installed v{{ pack.installed?.version }}</ion-note
+        ><ion-button
+          slot="end"
+          fill="clear"
+          color="danger"
+          (click)="requestDelete(pack)"
+          aria-label="Delete {{ pack.name }}"
+          ><ion-icon name="trash-outline"></ion-icon></ion-button
+        >}@else if(pack.state === 'downloading'){<ion-spinner slot="end"></ion-spinner>}@else {<ion-button
+          slot="end"
+          (click)="install(pack)"
+          >{{ pack.state === 'update-available' ? 'Update' : pack.state === 'failed' ? 'Retry' : 'Download'
+          }}</ion-button
+        >}</ion-item
+      ></ng-template
+    >
+  </main></ion-content
+><ion-alert
+  [isOpen]="!!deleteTarget()"
+  header="Delete {{ deleteTarget()?.name }} data?"
+  message="This data will no longer be available offline. You can download it again at any time."
+  [buttons]="[{ text: 'Cancel', role: 'cancel', handler: () => deleteTarget.set(null) }, { text: 'Delete', role: 'destructive', handler: () => delete() }]"
+  (didDismiss)="deleteTarget.set(null)"></ion-alert>

@@ -1,0 +1,31 @@
+<ion-header
+  ><ion-toolbar
+    ><ion-buttons slot="start"><ion-back-button defaultHref="/home"></ion-back-button></ion-buttons
+    ><ion-title>TV Channels</ion-title></ion-toolbar
+  ></ion-header
+><ion-content
+  ><main class="page">
+    <p class="eyebrow">CHANNEL FINDER</p>
+    <h1>Numbers without the guessing</h1>
+    <p class="intro">Search by channel name or number across downloaded DTH and region-aware cable data.</p>
+    <section class="empty">
+      <ion-icon name="tv-outline"></ion-icon>
+      <h2>No TV channel data installed</h2>
+      <p>Install the TV Channels data pack to look up provider and regional channel mappings offline.</p>
+      <ion-button routerLink="/offline-data">Browse offline data</ion-button>
+    </section>
+    <section class="finder">
+      <ion-item
+        ><ion-label>Provider</ion-label
+        ><ion-select placeholder="Choose after installation" disabled
+          ><ion-select-option>JioTV+</ion-select-option></ion-select
+        ></ion-item
+      ><ion-searchbar
+        [value]="query()"
+        (ionInput)="query.set($any($event.detail.value) ?? '')"
+        placeholder="Search channel or number"
+        aria-label="Search channel or number"></ion-searchbar>
+      <p>Results will clearly show “Not available in installed data” when a mapping is not present.</p>
+    </section>
+  </main></ion-content
+>

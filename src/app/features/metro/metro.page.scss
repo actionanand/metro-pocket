@@ -1,0 +1,72 @@
+.page {
+  max-width: 720px;
+  margin: auto;
+  padding: 28px 20px 48px;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: #2b8068;
+}
+h1 {
+  font-size: 32px;
+  letter-spacing: -0.03em;
+  margin: 8px 0;
+}
+.intro {
+  line-height: 1.5;
+  color: var(--ion-color-step-650);
+}
+.empty {
+  margin: 28px 0;
+  padding: 28px;
+  border: 1px dashed #8fb9aa;
+  border-radius: 20px;
+  text-align: center;
+  background: color-mix(in srgb, #dff5ec 48%, transparent);
+}
+.empty ion-icon {
+  font-size: 38px;
+  color: #237c64;
+}
+.empty h2 {
+  font-size: 20px;
+}
+.empty p {
+  line-height: 1.45;
+  color: var(--ion-color-step-650);
+}
+.planner {
+  opacity: 0.68;
+  position: relative;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--ion-item-background, #fff);
+  border: 1px solid var(--ion-color-step-150);
+}
+label {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 14px;
+}
+ion-searchbar {
+  padding: 6px 0;
+}
+.swap {
+  display: grid;
+  place-items: center;
+  margin: -6px auto 8px;
+  border: 0;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  background: #dff5ec;
+  color: #176c54;
+  font-size: 21px;
+}
+.planner ion-note {
+  display: block;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}

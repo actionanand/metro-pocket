@@ -1,0 +1,47 @@
+.page {
+  max-width: 720px;
+  margin: auto;
+  padding: 28px 20px 48px;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: #6851af;
+}
+h1 {
+  font-size: 32px;
+  letter-spacing: -0.03em;
+  margin: 8px 0;
+}
+.intro {
+  line-height: 1.5;
+  color: var(--ion-color-step-650);
+}
+.empty {
+  margin: 28px 0;
+  padding: 28px;
+  border: 1px dashed #a79bd2;
+  border-radius: 20px;
+  text-align: center;
+  background: color-mix(in srgb, #ebe7fb 48%, transparent);
+}
+.empty ion-icon {
+  font-size: 38px;
+  color: #6851af;
+}
+.empty h2 {
+  font-size: 20px;
+}
+.empty p,
+.finder p {
+  line-height: 1.45;
+  color: var(--ion-color-step-650);
+}
+.finder {
+  opacity: 0.68;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--ion-item-background, #fff);
+  border: 1px solid var(--ion-color-step-150);
+}
