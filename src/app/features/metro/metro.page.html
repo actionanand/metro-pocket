@@ -11,32 +11,40 @@
     <p class="intro">
       Choose a city pack from Offline Data to search operational stations, routes and interchange estimates.
     </p>
+    @if (!dataAvailable()) {
     <section class="empty">
       <ion-icon name="train-outline"></ion-icon>
       <h2>No metro data pack installed</h2>
       <p>MetroPocket never bundles production station data. Install a city pack when it becomes available.</p>
       <ion-button routerLink="/offline-data">Browse offline data</ion-button>
     </section>
-    <section class="planner" [class.planner-unavailable]="!dataAvailable()" aria-label="Route planner">
+    } @else {
+    <section class="empty">
+      <ion-icon name="train-outline"></ion-icon>
+      <h2>Metro data installed</h2>
+      <p>Route search will become available when the offline database reader is connected.</p>
+    </section>
+    }
+    <section class="planner" [class.planner-unavailable]="!routeDataReady()" aria-label="Route planner">
       <label
         >From<ion-searchbar
           [value]="from()"
           (ionInput)="from.set($any($event.detail.value) ?? '')"
-          [disabled]="!dataAvailable()"
+          [disabled]="!routeDataReady()"
           placeholder="Search station"
           aria-label="Search source station"></ion-searchbar></label
       ><button
         class="swap"
         type="button"
         (click)="swap()"
-        [disabled]="!dataAvailable()"
+        [disabled]="!routeDataReady()"
         aria-label="Swap source and destination">
         <ion-icon name="swap-vertical-outline"></ion-icon></button
       ><label
         >To<ion-searchbar
           [value]="to()"
           (ionInput)="to.set($any($event.detail.value) ?? '')"
-          [disabled]="!dataAvailable()"
+          [disabled]="!routeDataReady()"
           placeholder="Search station"
           aria-label="Search destination station"></ion-searchbar></label
       ><ion-note>Station autocomplete is available after installing a city pack.</ion-note

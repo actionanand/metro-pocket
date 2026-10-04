@@ -27,6 +27,8 @@ export interface DataManifest {
 
 export interface InstalledPack {
   id: string;
+  /** Optional for metadata created before pack types were persisted. */
+  type?: PackType;
   version: number;
   schemaVersion: number;
   installedAt: string;

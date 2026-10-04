@@ -18,6 +18,7 @@ export class PackInstallerService {
       if (!bytes.byteLength) throw new Error('The downloaded pack is empty.');
       const metadata: InstalledPack = {
         id: pack.id,
+        type: pack.type,
         version: pack.version,
         schemaVersion: pack.schemaVersion,
         installedAt: new Date().toISOString(),

@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   IonBackButton,
   IonButton,
@@ -14,6 +14,8 @@ import {
 import { RouterLink } from '@angular/router';
 import { addIcons } from 'ionicons';
 import { swapVerticalOutline, trainOutline } from 'ionicons/icons';
+import { PackStorageService } from '../../core/data-packs/pack-storage.service';
+import { hasInstalledPackType } from '../../core/data-packs/pack-availability';
 
 @Component({
   selector: 'app-metro',
@@ -34,10 +36,12 @@ import { swapVerticalOutline, trainOutline } from 'ionicons/icons';
   styleUrls: ['metro.page.scss'],
 })
 export class MetroPage {
+  private readonly storage = inject(PackStorageService);
   readonly dataAvailable = signal(false);
+  readonly routeDataReady = signal(false);
   readonly from = signal('');
   readonly to = signal('');
-  readonly hasSelection = computed(() => this.dataAvailable() && Boolean(this.from().trim() && this.to().trim()));
+  readonly hasSelection = computed(() => this.routeDataReady() && Boolean(this.from().trim() && this.to().trim()));
   constructor() {
     addIcons({ swapVerticalOutline, trainOutline });
   }
@@ -45,5 +49,9 @@ export class MetroPage {
     const from = this.from();
     this.from.set(this.to());
     this.to.set(from);
+  }
+  async ionViewWillEnter(): Promise<void> {
+    const packs = await this.storage.installed();
+    this.dataAvailable.set(hasInstalledPackType(packs, 'metro'));
   }
 }

@@ -8,22 +8,30 @@
     <p class="eyebrow">CHANNEL FINDER</p>
     <h1>Numbers without the guessing</h1>
     <p class="intro">Search by channel name or number across downloaded DTH and region-aware cable data.</p>
+    @if (!dataAvailable()) {
     <section class="empty">
       <ion-icon name="tv-outline"></ion-icon>
       <h2>No TV channel data installed</h2>
       <p>Install the TV Channels data pack to look up provider and regional channel mappings offline.</p>
       <ion-button routerLink="/offline-data">Browse offline data</ion-button>
     </section>
-    <section class="finder" [class.finder-unavailable]="!dataAvailable()" aria-label="TV channel search">
+    } @else {
+    <section class="empty">
+      <ion-icon name="tv-outline"></ion-icon>
+      <h2>TV data installed</h2>
+      <p>Channel search will become available when the offline database reader is connected.</p>
+    </section>
+    }
+    <section class="finder" [class.finder-unavailable]="!channelDataReady()" aria-label="TV channel search">
       <ion-item
         ><ion-label>Provider</ion-label
         ><ion-select
           placeholder="Available after installing TV data"
-          [disabled]="!dataAvailable()"></ion-select></ion-item
+          [disabled]="!channelDataReady()"></ion-select></ion-item
       ><ion-searchbar
         [value]="query()"
         (ionInput)="query.set($any($event.detail.value) ?? '')"
-        [disabled]="!dataAvailable()"
+        [disabled]="!channelDataReady()"
         placeholder="Search channel or number"
         aria-label="Search channel or number"></ion-searchbar>
       <p>
