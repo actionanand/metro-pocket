@@ -6,7 +6,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "develop": "ng serve --port 3037",
+    "develop": "ng serve --port 3042",
     "build": "ng build",
     "build:gh": "ng build --base-href /metro-pocket/",
     "watch": "ng build --watch --configuration development",
