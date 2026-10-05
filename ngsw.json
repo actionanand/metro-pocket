@@ -1,0 +1,95 @@
+{
+  "configVersion": 1,
+  "timestamp": 1791177924974,
+  "index": "/metro-pocket/index.html",
+  "assetGroups": [
+    {
+      "name": "app-shell",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/metro-pocket/chunk-BTwsfBSH.js",
+        "/metro-pocket/chunk-Bk6mHKg6.js",
+        "/metro-pocket/chunk-BohjqkyZ.js",
+        "/metro-pocket/chunk-BvcbF8Ef.js",
+        "/metro-pocket/chunk-C9CTcPC6.js",
+        "/metro-pocket/chunk-Ce-2dFR7.js",
+        "/metro-pocket/chunk-ChNXwaHi.js",
+        "/metro-pocket/chunk-CobmW_3z.js",
+        "/metro-pocket/chunk-Cx1xJNqE.js",
+        "/metro-pocket/chunk-DaxwRXVQ.js",
+        "/metro-pocket/chunk-NIOESBJI.js",
+        "/metro-pocket/chunk-SZnHp_HA.js",
+        "/metro-pocket/chunk-W6v-gK2t.js",
+        "/metro-pocket/chunk-gquD1X7I.js",
+        "/metro-pocket/chunk-t-PwvLPA.js",
+        "/metro-pocket/chunk-xqd2SW2C.js",
+        "/metro-pocket/chunk-zMg_G2Mf.js",
+        "/metro-pocket/index.html",
+        "/metro-pocket/main-XA4PVCDA.js",
+        "/metro-pocket/styles-SFWWPI3W.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/metro-pocket/assets/icon/favicon.png",
+        "/metro-pocket/assets/shapes.svg"
+      ],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [],
+  "hashTable": {
+    "/metro-pocket/assets/icon/favicon.png": "7798b8e0eb61d7375c245af78bbf5c916932bf13",
+    "/metro-pocket/assets/shapes.svg": "5413e95adabcb2cb639970051f55e0ddb64ace53",
+    "/metro-pocket/chunk-BTwsfBSH.js": "716b39865121a62045020a9af2b051dee29554b0",
+    "/metro-pocket/chunk-Bk6mHKg6.js": "93f804e909c3723ec445c531f856d0e7901ef22c",
+    "/metro-pocket/chunk-BohjqkyZ.js": "af308d2c59d8e892aa0bcec9e752859c0083fa93",
+    "/metro-pocket/chunk-BvcbF8Ef.js": "2d6ea789b392aa2fd0c3048a21dbb27439ef7b2c",
+    "/metro-pocket/chunk-C9CTcPC6.js": "fef5091d0dde379c598e450c8979e299a75da068",
+    "/metro-pocket/chunk-Ce-2dFR7.js": "069ec88d106927afd89e29c196f62c2a9f60a748",
+    "/metro-pocket/chunk-ChNXwaHi.js": "f5fb969e801a86663cddee15668b7bfb411f0739",
+    "/metro-pocket/chunk-CobmW_3z.js": "33fc6e3c0d03d4617a5ae9dc22a03017f71babad",
+    "/metro-pocket/chunk-Cx1xJNqE.js": "c5f504188fba38ad0b067728aaf9886e56394fb0",
+    "/metro-pocket/chunk-DaxwRXVQ.js": "2a5b044c85fc8204f3d4d735cc8d0b8c9020a6b5",
+    "/metro-pocket/chunk-NIOESBJI.js": "abda8053d0ff35147b3fa5e3d2a40cbf5ba8dff8",
+    "/metro-pocket/chunk-SZnHp_HA.js": "c29f1c69bffff40368e62d748b9b74121d924b8e",
+    "/metro-pocket/chunk-W6v-gK2t.js": "1c83344253d71e1523f9c95eb969f11ccd74b40f",
+    "/metro-pocket/chunk-gquD1X7I.js": "5d36f84a45dfa17ad1e03b77c254d2b5f614c96d",
+    "/metro-pocket/chunk-t-PwvLPA.js": "ba85898bf9fe570c53067e2f5a7fa8ffe395e5a4",
+    "/metro-pocket/chunk-xqd2SW2C.js": "b1aec6e39b5a67bf3b97202f04651076d4bb82f1",
+    "/metro-pocket/chunk-zMg_G2Mf.js": "61901bb7da7599f77b7bcf5185f5d5f7c1bbeaa0",
+    "/metro-pocket/index.html": "4b8b2481be3c4a18625a617813f8e8fc88165df3",
+    "/metro-pocket/main-XA4PVCDA.js": "dd36d622f5ab3026af5e99d56ff49feac60ea59d",
+    "/metro-pocket/styles-SFWWPI3W.css": "b383db7ebbf05637004374faf0556f555268655e"
+  },
+  "navigationUrls": [
+    {
+      "positive": true,
+      "regex": "^\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*\\.[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
+    }
+  ],
+  "navigationRequestStrategy": "performance"
+}
