@@ -11,7 +11,7 @@ npm run android:sync
 npm run android:open
 ```
 
-`android-version.json` is the only Android version source. Run `npm run android:version`, `android:version:patch`, `android:version:minor`, or `android:version:major`. Local `npm run android:release` creates explicitly unsigned APK/AAB plus the R8 mapping in `releases/`. CI on `main-android` bumps `versionCode`, commits it with `[skip ci]`, builds APK/AAB, then signs only when secrets exist. Signed artifacts are `MetroPocket-1-0-0.apk` and `.aab`; unsigned fallbacks retain `-unsigned`.
+`android-version.json` is the only Android version source. Run `npm run android:version`, `android:version:patch`, `android:version:minor`, or `android:version:major`. Local `npm run android:release` creates explicitly unsigned APK/AAB plus the R8 mapping in `releases/`. CI on `main-android` builds explicit `MetroPocket-<version>-unsigned.apk` and `.aab` first. Only after both signatures verify are they promoted to `MetroPocket-<version>.apk` and `.aab`; signing failure leaves only the clearly named unsigned fallback.
 
 The canonical final artwork should be added as `src/assets/metropocket.png`. Asset tooling deliberately refuses to invent branding. After it is added, `npm run android:assets` generates adaptive/round launcher assets, bounded splash art and `releases/playstore-icon.png` without modifying the source asset.
 

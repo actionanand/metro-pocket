@@ -1,8 +1,8 @@
 {
   "name": "metro-pocket",
   "version": "0.0.1",
-  "author": "Ionic Framework",
-  "homepage": "https://ionicframework.com/",
+  "author": "ActionAnand",
+  "homepage": "https://actionanand.github.io/metro-pocket/",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -75,7 +75,7 @@
     "typescript-eslint": "8.60.1",
     "vitest": "^4.0.8"
   },
-  "description": "An Ionic project",
+  "description": "Offline-first metro route and TV channel finder for Web and Android.",
   "engines": {
     "node": ">=22.22.3 || >=24.15.0 || >=26.0.0"
   }

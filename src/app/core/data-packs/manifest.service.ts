@@ -29,22 +29,48 @@ export class ManifestService {
     if (candidate.schemaVersion !== SUPPORTED_SCHEMA_VERSION || !Array.isArray(candidate.packs)) {
       throw new Error('This data manifest uses an unsupported schema version.');
     }
-    if (typeof candidate.releaseVersion !== 'number' || typeof candidate.generatedAt !== 'string') {
+    if (!this.positiveInteger(candidate.releaseVersion) || !this.nonEmptyString(candidate.generatedAt)) {
       throw new Error('Data manifest is incomplete.');
     }
     candidate.packs.forEach(pack => this.validatePack(pack));
     return candidate as DataManifest;
   }
 
-  private validatePack(pack: DataPackDescriptor): void {
+  private validatePack(pack: unknown): void {
+    if (!pack || typeof pack !== 'object') throw new Error('A data pack in the manifest is invalid or unsupported.');
+    const item = pack as Partial<DataPackDescriptor>;
+    const validUrl =
+      typeof item.downloadUrl === 'string' &&
+      (() => {
+        try {
+          return new URL(item.downloadUrl).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      })();
+    const validBytes = (bytes: unknown) =>
+      bytes === undefined ||
+      (typeof bytes === 'number' && Number.isFinite(bytes) && Number.isInteger(bytes) && bytes >= 0);
     if (
-      !pack.id ||
-      !pack.name ||
-      !pack.downloadUrl ||
-      !Number.isInteger(pack.version) ||
-      pack.schemaVersion !== SUPPORTED_SCHEMA_VERSION
+      !this.nonEmptyString(item.id) ||
+      (item.type !== 'metro' && item.type !== 'tv') ||
+      !this.nonEmptyString(item.name) ||
+      !this.positiveInteger(item.version) ||
+      item.schemaVersion !== SUPPORTED_SCHEMA_VERSION ||
+      !this.nonEmptyString(item.file) ||
+      !validUrl ||
+      !validBytes(item.downloadBytes) ||
+      !validBytes(item.installedBytes) ||
+      (item.sha256 !== undefined && (typeof item.sha256 !== 'string' || !/^[a-fA-F0-9]{64}$/.test(item.sha256))) ||
+      (item.networkAsOf !== undefined && typeof item.networkAsOf !== 'string')
     ) {
       throw new Error('A data pack in the manifest is invalid or unsupported.');
     }
+  }
+  private positiveInteger(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+  }
+  private nonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.trim().length > 0;
   }
 }

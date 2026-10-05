@@ -48,7 +48,9 @@ jobs:
       - name: Resolve release name
         run: |
           VERSION_NAME=$(node -p "require('./android-version.json').versionName")
+          VERSION_CODE=$(node -p "require('./android-version.json').versionCode")
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "RELEASE_FILE=${RELEASE_BASENAME}-${VERSION_NAME//./-}" >> "$GITHUB_ENV"
       - run: npm run build -- --configuration=production
       - name: Generate and configure Android
@@ -86,13 +88,21 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          set -e
           BUILD_TOOLS="${ANDROID_HOME}/build-tools/$(ls "${ANDROID_HOME}/build-tools" | sort -V | tail -1)"
           KEY_PASSWORD="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
-          "$BUILD_TOOLS/zipalign" -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "releases/${RELEASE_FILE}.apk"
-          "$BUILD_TOOLS/apksigner" sign --ks android/app/release-keystore.jks --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD "releases/${RELEASE_FILE}.apk"
-          "$BUILD_TOOLS/apksigner" verify --verbose "releases/${RELEASE_FILE}.apk"
-          jarsigner -keystore android/app/release-keystore.jks -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -signedjar "releases/${RELEASE_FILE}.aab" android/app/build/outputs/bundle/release/app-release.aab "$KEY_ALIAS"
-          jarsigner -verify -verbose -certs "releases/${RELEASE_FILE}.aab"
+          SIGNED_APK="releases/${RELEASE_FILE}.apk"
+          SIGNED_AAB="releases/${RELEASE_FILE}.aab"
+          TEMP_APK="${SIGNED_APK}.candidate"
+          TEMP_AAB="${SIGNED_AAB}.candidate"
+          trap 'rm -f "$SIGNED_APK" "$SIGNED_AAB" "$TEMP_APK" "$TEMP_AAB"' ERR
+          "$BUILD_TOOLS/zipalign" -f 4 "releases/${RELEASE_FILE}-unsigned.apk" "$TEMP_APK"
+          "$BUILD_TOOLS/apksigner" sign --ks android/app/release-keystore.jks --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD "$TEMP_APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$TEMP_APK"
+          jarsigner -keystore android/app/release-keystore.jks -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -signedjar "$TEMP_AAB" "releases/${RELEASE_FILE}-unsigned.aab" "$KEY_ALIAS"
+          jarsigner -verify -verbose -certs "$TEMP_AAB"
+          mv "$TEMP_APK" "$SIGNED_APK"
+          mv "$TEMP_AAB" "$SIGNED_AAB"
           rm -f "releases/${RELEASE_FILE}-unsigned.apk" "releases/${RELEASE_FILE}-unsigned.aab"
       - name: Summarize artifacts
         run: |
@@ -100,8 +110,16 @@ jobs:
           test -s "$(find releases -maxdepth 1 -name '*.aab' -type f | head -1)"
           test -s "$MAPPING_FILE"
           test -s releases/playstore-icon.png
+          APK_FILE=$(find releases -maxdepth 1 -name '*.apk' -type f | head -1)
+          AAB_FILE=$(find releases -maxdepth 1 -name '*.aab' -type f | head -1)
+          if [[ "$APK_FILE" == *-unsigned.apk ]]; then LABEL="⚠️ Unsigned fallback"; else LABEL="✅ Signed and verified"; fi
           echo "## MetroPocket Android artifacts" >> "$GITHUB_STEP_SUMMARY"
-          find releases -maxdepth 1 -type f -printf '%f\n' | sed 's/^/- `/' | sed 's/$/`/' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: `${VERSION_NAME}` (code `${VERSION_CODE}`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ${LABEL}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- APK: `$APK_FILE`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- AAB: `$AAB_FILE`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mapping: `$MAPPING_FILE`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Play Store icon: `releases/playstore-icon.png`" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: metropocket-android-${{ env.VERSION_NAME }}

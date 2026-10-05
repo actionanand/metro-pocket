@@ -4,6 +4,8 @@ MetroPocket is a privacy-friendly, offline-first Web and Android utility for met
 
 The app contains no production stations, routes, travel times or channel numbers. It is ready to consume public, downloadable, versioned data packs from the future `actionanand/metropocket-data` release repository. Until packs are published, the app opens with clear empty states instead of fabricated data.
 
+Production web builds register an offline app-shell service worker. Data packs are stored separately in IndexedDB, not in the service-worker cache.
+
 ## Start locally
 
 ```bash
