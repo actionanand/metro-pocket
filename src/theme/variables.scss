@@ -1,2 +1,43 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+:root {
+  --ion-color-primary: #125b49;
+  --ion-color-primary-rgb: 18, 91, 73;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #104f40;
+  --ion-color-primary-tint: #2a6b5b;
+  --mp-primary: #125b49;
+  --mp-primary-strong: #176c54;
+  --mp-secondary: #6851af;
+  --mp-secondary-strong: #59459c;
+  --mp-page: #f6faf7;
+  --mp-card: #ffffff;
+  --mp-muted: #557168;
+  --mp-border: #d8e8e0;
+  --mp-surface-green: #dff5ec;
+  --mp-surface-purple: #ebe7fb;
+  --mp-focus-ring: #2d8b70;
+  --mp-warning: #8a5a00;
+  --ion-background-color: var(--mp-page);
+  --ion-item-background: var(--mp-card);
+  --ion-text-color: #17221e;
+}
+
+.ion-palette-dark {
+  --ion-color-primary: #66c6a5;
+  --ion-color-primary-rgb: 102, 198, 165;
+  --ion-color-primary-contrast: #0c2019;
+  --mp-primary: #66c6a5;
+  --mp-primary-strong: #8cddc1;
+  --mp-secondary: #bba9ff;
+  --mp-secondary-strong: #d0c4ff;
+  --mp-page: #101b17;
+  --mp-card: #172722;
+  --mp-muted: #b2c9bf;
+  --mp-border: #2d473d;
+  --mp-surface-green: #1d4035;
+  --mp-surface-purple: #30294d;
+  --mp-focus-ring: #8cddc1;
+  --mp-warning: #ffd08a;
+  --ion-background-color: var(--mp-page);
+  --ion-item-background: var(--mp-card);
+  --ion-text-color: #edf7f1;
+}

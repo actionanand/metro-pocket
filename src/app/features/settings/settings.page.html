@@ -1,0 +1,34 @@
+<ion-header
+  ><ion-toolbar
+    ><ion-buttons slot="start"><ion-back-button defaultHref="/home"></ion-back-button></ion-buttons
+    ><ion-title>Settings</ion-title></ion-toolbar
+  ></ion-header
+><ion-content
+  ><main class="page">
+    <h1>Settings</h1>
+    <ion-list inset="true"
+      ><ion-item
+        ><ion-label
+          ><h2>Theme</h2>
+          <p>Choose how MetroPocket looks on this device.</p></ion-label
+        ></ion-item
+      ><ion-radio-group [value]="theme.preference()" (ionChange)="setTheme($event.detail.value)"
+        ><ion-item><ion-radio value="system">System / Automatic</ion-radio></ion-item
+        ><ion-item><ion-radio value="light">Light</ion-radio></ion-item
+        ><ion-item><ion-radio value="dark">Dark</ion-radio></ion-item></ion-radio-group
+      ></ion-list
+    ><ion-list inset="true"
+      ><ion-item routerLink="/offline-data" detail="true"
+        ><ion-label
+          ><h2>Offline data</h2>
+          <p>Check updates and manage local storage.</p></ion-label
+        ></ion-item
+      ><ion-item routerLink="/about" detail="true"
+        ><ion-label
+          ><h2>About, privacy & data sources</h2>
+          <p>No account, analytics, advertising or location access.</p></ion-label
+        ></ion-item
+      ></ion-list
+    >
+  </main></ion-content
+>

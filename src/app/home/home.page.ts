@@ -1,12 +1,17 @@
 import { Component } from '@angular/core';
-import { IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/angular';
+import { IonButton, IonContent, IonIcon } from '@ionic/angular';
+import { addIcons } from 'ionicons';
+import { arrowForwardOutline, cloudDownloadOutline, settingsOutline, trainOutline, tvOutline } from 'ionicons/icons';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent],
+  imports: [IonButton, IonContent, IonIcon, RouterLink],
 })
 export class HomePage {
-  constructor() {}
+  constructor() {
+    addIcons({ arrowForwardOutline, cloudDownloadOutline, settingsOutline, trainOutline, tvOutline });
+  }
 }

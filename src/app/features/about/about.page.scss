@@ -1,0 +1,26 @@
+.page {
+  max-width: 720px;
+  margin: auto;
+  padding: 28px 20px;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: #2b8068;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+.page > p:not(.eyebrow) {
+  color: var(--ion-color-step-650);
+  line-height: 1.55;
+}
+.page ion-list {
+  margin-top: 28px;
+}
+.page h2 {
+  font-weight: 700;
+}

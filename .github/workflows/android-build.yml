@@ -1,0 +1,130 @@
+name: Android APK and AAB
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main-android]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: metropocket-android-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MIN_SDK_VERSION: 24
+  TARGET_SDK_VERSION: 36
+  RELEASE_BASENAME: MetroPocket
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main-android'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24.16.0', cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: android-actions/setup-android@v3
+        with: { packages: platform-tools }
+      - run: sdkmanager "platforms;android-${TARGET_SDK_VERSION}" "build-tools;36.0.0"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:ci
+      - run: npm run test:android-scripts
+      - name: Bump Android version code
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm run android:version
+          VERSION_CODE=$(node -p "require('./android-version.json').versionCode")
+          git add android-version.json
+          git diff --cached --quiet || git commit -m "chore: bump Android versionCode to $VERSION_CODE [skip ci]"
+          git pull --rebase --autostash origin main-android
+          git push
+      - name: Resolve release name
+        run: |
+          VERSION_NAME=$(node -p "require('./android-version.json').versionName")
+          VERSION_CODE=$(node -p "require('./android-version.json').versionCode")
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "RELEASE_FILE=${RELEASE_BASENAME}-${VERSION_NAME//./-}" >> "$GITHUB_ENV"
+      - run: npm run build -- --configuration=production
+      - name: Generate and configure Android
+        run: |
+          if [ ! -d android ]; then npx cap add android; fi
+          npx cap sync android
+          npm run android:patch
+      - working-directory: android
+        run: |
+          sed -i "s/minSdkVersion = .*/minSdkVersion = $MIN_SDK_VERSION/" variables.gradle
+          sed -i "s/targetSdkVersion = .*/targetSdkVersion = $TARGET_SDK_VERSION/" variables.gradle
+      - name: Generate Android artwork
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          npm run android:assets
+      - run: mkdir -p releases && rm -f releases/*.apk releases/*.aab releases/*-mapping.txt
+      - run: node scripts/build-android.mjs
+      - name: Collect R8 mapping
+        run: |
+          cp android/app/build/outputs/mapping/release/mapping.txt "releases/${RELEASE_FILE}-mapping.txt"
+          echo "MAPPING_FILE=releases/${RELEASE_FILE}-mapping.txt" >> "$GITHUB_ENV"
+      - name: Decode keystore if configured
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          if [[ -n "$KEYSTORE_BASE64" && -n "$KEYSTORE_PASSWORD" && -n "$KEY_ALIAS" ]] && printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks; then echo "available=true" >> "$GITHUB_OUTPUT"; else rm -f android/app/release-keystore.jks; echo "available=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Sign APK and AAB
+        if: steps.keystore.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          BUILD_TOOLS="${ANDROID_HOME}/build-tools/$(ls "${ANDROID_HOME}/build-tools" | sort -V | tail -1)"
+          KEY_PASSWORD="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+          SIGNED_APK="releases/${RELEASE_FILE}.apk"
+          SIGNED_AAB="releases/${RELEASE_FILE}.aab"
+          TEMP_APK="${SIGNED_APK}.candidate"
+          TEMP_AAB="${SIGNED_AAB}.candidate"
+          trap 'rm -f "$SIGNED_APK" "$SIGNED_AAB" "$TEMP_APK" "$TEMP_AAB"' ERR
+          "$BUILD_TOOLS/zipalign" -f 4 "releases/${RELEASE_FILE}-unsigned.apk" "$TEMP_APK"
+          "$BUILD_TOOLS/apksigner" sign --ks android/app/release-keystore.jks --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD "$TEMP_APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$TEMP_APK"
+          jarsigner -keystore android/app/release-keystore.jks -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -signedjar "$TEMP_AAB" "releases/${RELEASE_FILE}-unsigned.aab" "$KEY_ALIAS"
+          jarsigner -verify -verbose -certs "$TEMP_AAB"
+          mv "$TEMP_APK" "$SIGNED_APK"
+          mv "$TEMP_AAB" "$SIGNED_AAB"
+          rm -f "releases/${RELEASE_FILE}-unsigned.apk" "releases/${RELEASE_FILE}-unsigned.aab"
+      - name: Summarize artifacts
+        run: |
+          test -s "$(find releases -maxdepth 1 -name '*.apk' -type f | head -1)"
+          test -s "$(find releases -maxdepth 1 -name '*.aab' -type f | head -1)"
+          test -s "$MAPPING_FILE"
+          test -s releases/playstore-icon.png
+          APK_FILE=$(find releases -maxdepth 1 -name '*.apk' -type f | head -1)
+          AAB_FILE=$(find releases -maxdepth 1 -name '*.aab' -type f | head -1)
+          if [[ "$APK_FILE" == *-unsigned.apk ]]; then LABEL="⚠️ Unsigned fallback"; else LABEL="✅ Signed and verified"; fi
+          echo "## MetroPocket Android artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: `${VERSION_NAME}` (code `${VERSION_CODE}`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ${LABEL}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- APK: `$APK_FILE`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- AAB: `$AAB_FILE`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mapping: `$MAPPING_FILE`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Play Store icon: `releases/playstore-icon.png`" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metropocket-android-${{ env.VERSION_NAME }}
+          path: releases/*
+          if-no-files-found: error
+      - name: Remove decoded keystore
+        if: always()
+        run: rm -f android/app/release-keystore.jks
