@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  dataManifestUrl: 'https://github.com/actionanand/metropocket-data/releases/latest/download/manifest.json',
+  dataManifestUrl: 'https://raw.githubusercontent.com/actionanand/metropocket-data/client-data/manifest.json',
 };
 
 /*

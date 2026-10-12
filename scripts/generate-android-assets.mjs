@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
-const source = 'src/assets/metropocket.png',
+const source = 'src/assets/icon/metro-pocket.png',
   res = 'android/app/src/main/res';
 if (!existsSync(res)) throw new Error('Run npm run android:add first.');
 if (!existsSync(source))

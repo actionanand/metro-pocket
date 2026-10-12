@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 const root = process.cwd();
@@ -23,6 +23,28 @@ const write = async (file, text) => {
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, text);
 };
+const sourceIcon = path.join(root, 'src/assets/icon/metro-pocket.png');
+if (!existsSync(sourceIcon))
+  throw new Error('Canonical MetroPocket artwork is missing: src/assets/icon/metro-pocket.png');
+const splashLogo = path.join(res, 'drawable-nodpi/metropocket_splash_logo.png');
+await mkdir(path.dirname(splashLogo), { recursive: true });
+// Preserve padded artwork when the release helper reapplies this patch.
+if (!existsSync(splashLogo)) await copyFile(sourceIcon, splashLogo);
+await write(
+  path.join(res, 'drawable/metropocket_splash_icon.xml'),
+  '<layer-list xmlns:android="http://schemas.android.com/apk/res/android"><item android:width="168dp" android:height="168dp" android:gravity="center" android:drawable="@drawable/metropocket_splash_logo"/></layer-list>',
+);
+for (const [directory, background, dark] of [
+  ['values', '#f4faf7', false],
+  ['values-night', '#101b17', true],
+]) {
+  const file = path.join(res, directory, 'styles.xml');
+  let styles = existsSync(file) ? await readFile(file, 'utf8') : '<resources></resources>';
+  styles = styles.replace(/\s*<style name="AppTheme\.NoActionBar(?:Launch)?"[\s\S]*?<\/style>/g, '');
+  const themes = `<style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar"><item name="android:statusBarColor">${background}</item><item name="android:navigationBarColor">${background}</item><item name="android:windowLightStatusBar">${!dark}</item><item name="android:windowLightNavigationBar">${!dark}</item></style>
+<style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen"><item name="windowSplashScreenBackground">${background}</item><item name="windowSplashScreenAnimatedIcon">@drawable/metropocket_splash_icon</item><item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item><item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item></style>`;
+  await write(file, styles.replace('</resources>', `${themes}</resources>`));
+}
 const domains = [
   'root',
   'file',
@@ -52,7 +74,11 @@ gradle = gradle
     /versionName .*/,
     `versionName project.hasProperty("versionName") ? project.versionName : "${version.versionName}"`,
   )
-  .replace(/minifyEnabled\s+false/, 'minifyEnabled true');
+  .replace(/minifyEnabled\s+false/, 'minifyEnabled true')
+  .replace(
+    /getDefaultProguardFile\(['"]proguard-android\.txt['"]\)/g,
+    "getDefaultProguardFile('proguard-android-optimize.txt')",
+  );
 if (!gradle.includes('shrinkResources true'))
   gradle = gradle.replace('minifyEnabled true', 'minifyEnabled true\n            shrinkResources true');
 await writeFile(gradleFile, gradle);
