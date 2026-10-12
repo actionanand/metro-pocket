@@ -1,1 +1,0 @@
-var a$1=(e,s)=>e.some(t=>t.type===s);export{a$1 as a};
