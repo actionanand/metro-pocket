@@ -14,6 +14,7 @@ interface Step {
   minutes: number;
   transfers: number;
   previous?: string;
+  estimated?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,10 +39,11 @@ export class MetroRoutePlannerService {
       )
         continue;
       edges.set(connection.from, [...(edges.get(connection.from) ?? []), connection]);
-      edges.set(connection.to, [
-        ...(edges.get(connection.to) ?? []),
-        { ...connection, from: connection.to, to: connection.from },
-      ]);
+      if (connection.bidirectional !== false)
+        edges.set(connection.to, [
+          ...(edges.get(connection.to) ?? []),
+          { ...connection, from: connection.to, to: connection.from },
+        ]);
     }
     const queue: Step[] = [{ stationId: sourceId, minutes: 0, transfers: 0 }];
     const best = new Map<string, Step>();
@@ -50,26 +52,30 @@ export class MetroRoutePlannerService {
     while (queue.length) {
       queue.sort((a, b) => a.minutes + a.transfers * 7 - (b.minutes + b.transfers * 7));
       const current = queue.shift()!;
+      if (best.get(`${current.stationId}|${current.lineId ?? ''}`) !== current) continue;
       if (current.stationId === destinationId) {
         winner = current;
         break;
       }
       for (const edge of edges.get(current.stationId) ?? []) {
         const transfer = Boolean(current.lineId && current.lineId !== edge.lineId);
-        const interchange = transfer
-          ? (network.interchanges?.find(
+        const interchangeRecord = transfer
+          ? network.interchanges?.find(
               item =>
                 item.stationId === current.stationId &&
                 ((item.fromLineId === current.lineId && item.toLineId === edge.lineId) ||
                   (item.toLineId === current.lineId && item.fromLineId === edge.lineId)),
-            )?.minutes ?? 5)
-          : 0;
+            )
+          : undefined;
+        const interchange = transfer ? (interchangeRecord?.minutes ?? 5) : 0;
         const next: Step = {
           stationId: edge.to,
           lineId: edge.lineId,
           minutes: current.minutes + (edge.minutes ?? network.defaultEdgeMinutes ?? 3) + interchange,
           transfers: current.transfers + Number(transfer),
           previous: `${current.stationId}|${current.lineId ?? ''}`,
+          estimated:
+            current.estimated || edge.minutes === undefined || (transfer && interchangeRecord?.minutes === undefined),
         };
         const key = `${next.stationId}|${next.lineId}`;
         const old = best.get(key);
@@ -94,7 +100,7 @@ export class MetroRoutePlannerService {
         segments.push({
           line,
           stations: [stations.get(previous.stationId)!, station],
-          toward: this.terminalFor(line, station.id),
+          toward: this.terminalFor(network, line, previous.stationId, station.id),
           minutes: current.minutes - previous.minutes,
         });
       else {
@@ -109,7 +115,7 @@ export class MetroRoutePlannerService {
       stations: path.length - 1,
       interchanges: winner.transfers,
       minutes: winner.minutes,
-      estimated: network.connections.some(edge => edge.minutes === undefined),
+      estimated: Boolean(winner.estimated),
     };
   }
   search(network: MetroNetwork, term: string): MetroStation[] {
@@ -125,7 +131,16 @@ export class MetroRoutePlannerService {
       )
       .slice(0, 8);
   }
-  private terminalFor(line: MetroLine, stationId: string): string {
-    return line.terminals.find(terminal => terminal !== stationId) ?? line.name;
+  private terminalFor(network: MetroNetwork, line: MetroLine, fromId: string, toId: string): string {
+    const membership = network.stationLines?.filter(item => item.lineId === line.id) ?? [];
+    const from = membership.find(item => item.stationId === fromId);
+    const to = membership.find(item => item.stationId === toId);
+    if (!from || !to || from.sequence === to.sequence) return 'Direction unavailable';
+    const terminals = membership
+      .filter(item => line.terminals.includes(item.stationId))
+      .sort((a, b) => a.sequence - b.sequence);
+    if (terminals.length !== 2) return 'Direction unavailable';
+    const terminal = to.sequence > from.sequence ? terminals.at(-1) : terminals[0];
+    return network.stations.find(station => station.id === terminal?.stationId)?.name ?? 'Direction unavailable';
   }
 }

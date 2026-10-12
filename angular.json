@@ -28,6 +28,11 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               {
+                "glob": "sql-wasm.wasm",
+                "input": "node_modules/sql.js/dist",
+                "output": "assets/sqlite"
+              },
+              {
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"

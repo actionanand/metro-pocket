@@ -8,47 +8,100 @@
   ><main class="page">
     <p class="eyebrow">ROUTE PLANNER</p>
     <h1>Find an offline route</h1>
-    <p class="intro">
-      Choose a city pack from Offline Data to search operational stations, routes and interchange estimates.
-    </p>
-    @if (!dataAvailable()) {
+    <p class="intro">Search installed city data for operational stations, routes and approximate journey times.</p>
+    @if (loading()) {
+    <p role="status">Opening offline metro data…</p>
+    } @if (error()) {
+    <section class="empty" role="alert">
+      <h2>Metro data could not be opened</h2>
+      <p>{{ error() }}</p>
+      <ion-button routerLink="/offline-data">Manage offline data</ion-button>
+    </section>
+    } @else if (!loading() && !dataAvailable()) {
     <section class="empty">
-      <ion-icon name="train-outline"></ion-icon>
+      <ion-icon name="train-outline" aria-hidden="true"></ion-icon>
       <h2>No metro data pack installed</h2>
-      <p>MetroPocket never bundles production station data. Install a city pack when it becomes available.</p>
+      <p>Install a city pack to search and plan routes offline.</p>
       <ion-button routerLink="/offline-data">Browse offline data</ion-button>
     </section>
-    } @else {
-    <section class="empty">
-      <ion-icon name="train-outline"></ion-icon>
-      <h2>Metro data installed</h2>
-      <p>Route search will become available when the offline database reader is connected.</p>
-    </section>
+    } @if (packs().length > 1) { <label for="city-pack">City pack</label
+    ><select id="city-pack" [value]="packId()" (change)="changePack($event)">
+      @for (pack of packs(); track pack.id) {
+      <option [value]="pack.id">{{ pack.id }}</option>
+      }
+    </select>
+    } @if (network(); as network) {
+    <p class="intro">{{ network.city }} · Network as of {{ network.networkAsOf }}</p>
     }
     <section class="planner" [class.planner-unavailable]="!routeDataReady()" aria-label="Route planner">
-      <label
-        >From<ion-searchbar
-          [value]="from()"
-          (ionInput)="from.set($any($event.detail.value) ?? '')"
-          [disabled]="!routeDataReady()"
-          placeholder="Search station"
-          aria-label="Search source station"></ion-searchbar></label
-      ><button
+      <ion-searchbar
+        [value]="from()"
+        (ionInput)="search('from', $event.detail.value)"
+        [disabled]="!routeDataReady()"
+        placeholder="Search station"
+        aria-label="From station"
+        aria-describedby="station-help"></ion-searchbar>
+      @if (fromResults().length) {
+      <ul class="suggestions" aria-label="From station matches">
+        @for (station of fromResults(); track station.id) {
+        <li><button type="button" (click)="select('from', station)">{{ station.name }}</button></li>
+        }
+      </ul>
+      }
+      <button
         class="swap"
         type="button"
         (click)="swap()"
         [disabled]="!routeDataReady()"
         aria-label="Swap source and destination">
-        <ion-icon name="swap-vertical-outline"></ion-icon></button
-      ><label
-        >To<ion-searchbar
-          [value]="to()"
-          (ionInput)="to.set($any($event.detail.value) ?? '')"
-          [disabled]="!routeDataReady()"
-          placeholder="Search station"
-          aria-label="Search destination station"></ion-searchbar></label
-      ><ion-note>Station autocomplete is available after installing a city pack.</ion-note
-      ><ion-button [disabled]="!hasSelection()" expand="block">Find route</ion-button>
+        <ion-icon name="swap-vertical-outline" aria-hidden="true"></ion-icon>
+      </button>
+      <ion-searchbar
+        [value]="to()"
+        (ionInput)="search('to', $event.detail.value)"
+        [disabled]="!routeDataReady()"
+        placeholder="Search station"
+        aria-label="To station"
+        aria-describedby="station-help"></ion-searchbar>
+      @if (toResults().length) {
+      <ul class="suggestions" aria-label="To station matches">
+        @for (station of toResults(); track station.id) {
+        <li><button type="button" (click)="select('to', station)">{{ station.name }}</button></li>
+        }
+      </ul>
+      }
+      <ion-note id="station-help"
+        >Search by station name, alias or code, then select a station from the matches. Use Tab and Enter to choose a
+        match.</ion-note
+      >
+      <ion-button (click)="findRoute()" [disabled]="!hasSelection()" expand="block">Find route</ion-button>
     </section>
+    @if (routeMessage()) {
+    <p role="status">{{ routeMessage() }}</p>
+    } @if (route(); as route) {
+    <section class="route-result" aria-live="polite">
+      <h2>{{ route.source.name }} → {{ route.destination.name }}</h2>
+      <p>Approx. {{ route.minutes }} min · {{ route.stations + 1 }} stations · {{ route.interchanges }} interchanges</p>
+      <p class="intro">
+        {{ route.estimated ? 'Includes estimated travel or interchange times.' : 'Calculated from pack travel and
+        interchange times.' }} Offline estimate, not live train information.
+      </p>
+      @if (!route.segments.length) {
+      <p>You are already at your destination.</p>
+      } @for (segment of route.segments; track $index) { @if ($index > 0) {
+      <p class="change">Change here: {{ route.segments[$index - 1].line.name }} → {{ segment.line.name }}</p>
+      }
+      <article class="route-segment" [style.border-left-color]="segment.line.color">
+        <h3>{{ segment.line.name }}</h3>
+        <p>Toward {{ segment.toward }}</p>
+        <ol>
+          @for (station of segment.stations; track $index) {
+          <li>{{ station.name }}</li>
+          }
+        </ol>
+      </article>
+      }
+    </section>
+    }
   </main></ion-content
 >

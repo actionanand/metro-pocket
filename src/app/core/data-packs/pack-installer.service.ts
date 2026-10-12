@@ -1,5 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { PackStorageService } from './pack-storage.service';
+import { SqlitePackReaderService } from '../database/sqlite-pack-reader.service';
 import type { DataPackDescriptor, InstalledPack } from '../../shared/models/data-pack.models';
 
 @Injectable({ providedIn: 'root' })
@@ -7,6 +8,7 @@ export class PackInstallerService {
   readonly progress = signal<Record<string, number>>({});
   readonly failures = signal<Record<string, string>>({});
   private readonly storage = inject(PackStorageService);
+  private readonly reader = inject(SqlitePackReaderService);
 
   async install(pack: DataPackDescriptor): Promise<void> {
     this.failures.update(items => ({ ...items, [pack.id]: '' }));
@@ -16,6 +18,10 @@ export class PackInstallerService {
         throw new Error('The downloaded file did not match its checksum.');
       if (pack.schemaVersion !== 1) throw new Error('This pack schema is not supported by this app version.');
       if (!bytes.byteLength) throw new Error('The downloaded pack is empty.');
+      if (pack.type === 'metro') {
+        const { mapMetroDatabase } = await import('../database/metro-network-repository.service');
+        await this.reader.read(bytes, database => mapMetroDatabase(database, pack));
+      }
       const metadata: InstalledPack = {
         id: pack.id,
         type: pack.type,

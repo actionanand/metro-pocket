@@ -38,7 +38,6 @@
   },
   "private": true,
   "dependencies": {
-    "@capacitor/android": "8.5.0",
     "@angular/common": "22.0.1",
     "@angular/compiler": "22.0.1",
     "@angular/core": "22.0.1",
@@ -46,14 +45,17 @@
     "@angular/platform-browser": "22.0.1",
     "@angular/router": "22.0.1",
     "@angular/service-worker": "22.0.1",
+    "@capacitor/android": "8.5.0",
     "@capacitor/app": "8.1.1",
     "@capacitor/core": "8.5.0",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/keyboard": "8.0.5",
     "@capacitor/status-bar": "8.0.3",
     "@ionic/angular": "^9.0.0",
+    "fflate": "^0.8.3",
     "ionicons": "^8.1.0",
     "rxjs": "~7.8.0",
+    "sql.js": "^1.14.2",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
@@ -64,6 +66,7 @@
     "@capacitor/cli": "8.5.0",
     "@eslint/js": "^10.0.1",
     "@ionic/angular-toolkit": "^13.0.0",
+    "@types/sql.js": "^1.4.11",
     "angular-eslint": "22.0.0",
     "eslint": "^10.3.0",
     "husky": "^9.1.7",

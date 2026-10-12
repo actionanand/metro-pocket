@@ -20,6 +20,12 @@ export interface MetroConnection {
   lineId: string;
   minutes?: number;
   status: OperationalStatus;
+  bidirectional?: boolean;
+}
+export interface MetroStationLine {
+  stationId: string;
+  lineId: string;
+  sequence: number;
 }
 export interface MetroInterchange {
   stationId: string;
@@ -35,6 +41,7 @@ export interface MetroNetwork {
   connections: MetroConnection[];
   interchanges?: MetroInterchange[];
   defaultEdgeMinutes?: number;
+  stationLines?: MetroStationLine[];
 }
 export interface RouteSegment {
   line: MetroLine;
