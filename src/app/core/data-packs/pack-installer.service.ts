@@ -21,6 +21,9 @@ export class PackInstallerService {
       if (pack.type === 'metro') {
         const { mapMetroDatabase } = await import('../database/metro-network-repository.service');
         await this.reader.read(bytes, database => mapMetroDatabase(database, pack));
+      } else if (pack.type === 'tv') {
+        const { mapTvDatabase } = await import('../database/tv-database-repository.service');
+        await this.reader.read(bytes, database => mapTvDatabase(database, pack));
       }
       const metadata: InstalledPack = {
         id: pack.id,

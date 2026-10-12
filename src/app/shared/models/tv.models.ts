@@ -1,4 +1,4 @@
-export type TvProviderKind = 'dth' | 'cable';
+export type TvProviderKind = 'dth' | 'cable' | 'iptv';
 export interface TvProvider {
   id: string;
   name: string;

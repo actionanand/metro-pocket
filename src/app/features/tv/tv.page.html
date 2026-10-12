@@ -1,43 +1,127 @@
-<ion-header
-  ><ion-toolbar
-    ><ion-buttons slot="start"><ion-back-button defaultHref="/home"></ion-back-button></ion-buttons
-    ><ion-title>TV Channels</ion-title></ion-toolbar
-  ></ion-header
-><ion-content
-  ><main class="page">
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/home"></ion-back-button></ion-buttons>
+    <ion-title>TV Channels</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <main class="page">
     <p class="eyebrow">CHANNEL FINDER</p>
-    <h1>Numbers without the guessing</h1>
-    <p class="intro">Search by channel name or number across downloaded DTH and region-aware cable data.</p>
-    @if (!dataAvailable()) {
-    <section class="empty">
-      <ion-icon name="tv-outline"></ion-icon>
-      <h2>No TV channel data installed</h2>
-      <p>Install the TV Channels data pack to look up provider and regional channel mappings offline.</p>
-      <ion-button routerLink="/offline-data">Browse offline data</ion-button>
+    <h1>Browse channels offline</h1>
+    <p class="intro">Find channel numbers across the providers in your installed TV data pack.</p>
+    @if (loading()) {
+    <p role="status">Opening offline TV data…</p>
+    } @else if (error()) {
+    <section class="empty" role="alert">
+      <ion-icon name="tv-outline" aria-hidden="true"></ion-icon>
+      <h2>TV data could not be opened</h2>
+      <p>Reinstall it from Offline Data.</p>
+      <ion-button routerLink="/offline-data">Manage offline data</ion-button>
     </section>
-    } @else {
+    } @else if (!packs().length) {
     <section class="empty">
-      <ion-icon name="tv-outline"></ion-icon>
-      <h2>TV data installed</h2>
-      <p>Channel search will become available when the offline database reader is connected.</p>
+      <ion-icon name="tv-outline" aria-hidden="true"></ion-icon>
+      <h2>No TV channel data installed</h2>
+      <p>Install a TV data pack to browse channels and provider numbers offline.</p>
+      <ion-button routerLink="/offline-data">Browse Offline Data</ion-button>
+    </section>
+    } @else if (database()) { @if (packs().length > 1) {
+    <label for="tv-pack">TV data pack</label>
+    <select id="tv-pack" [value]="packId()" (change)="changePack($event)">
+      @for (pack of packs(); track pack.id) {
+      <option [value]="pack.id">{{ pack.id }}</option>
+      }
+    </select>
+    }
+    <section class="finder" aria-label="TV channel filters">
+      <ion-searchbar
+        [value]="search()"
+        (ionInput)="changeSearch($event.detail.value)"
+        placeholder="Name, alias or channel number"
+        aria-label="Search channels"></ion-searchbar>
+      <div class="filters">
+        <div class="filter">
+          <label for="tv-provider">Provider</label>
+          <select id="tv-provider" [value]="providerId()" (change)="changeFilter('providerId', $event)">
+            <option value="">All providers</option>
+            @for (provider of providers(); track provider.id) {
+            <option [value]="provider.id">{{ provider.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter">
+          <label for="tv-language">Language</label>
+          <select id="tv-language" [value]="language()" (change)="changeFilter('language', $event)">
+            <option value="">All languages</option>
+            @for (value of languages(); track value) {
+            <option [value]="value">{{ value }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter">
+          <label for="tv-genre">Genre</label>
+          <select id="tv-genre" [value]="genre()" (change)="changeFilter('genre', $event)">
+            <option value="">All genres</option>
+            @for (value of genres(); track value) {
+            <option [value]="value">{{ value }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter">
+          <label for="tv-quality">Quality</label>
+          <select id="tv-quality" [value]="quality()" (change)="changeFilter('quality', $event)">
+            <option value="">All qualities</option>
+            @for (value of qualities(); track value) {
+            <option [value]="value">{{ value }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter">
+          <label for="tv-sort">Sort by</label>
+          <select id="tv-sort" [value]="sort()" (change)="changeFilter('sort', $event)">
+            <option value="auto">Recommended</option>
+            <option value="number">Channel number</option>
+            <option value="name">Channel name</option>
+          </select>
+        </div>
+      </div>
+      @if (filtersActive()) {
+      <ion-button fill="clear" (click)="clearFilters()">Clear filters</ion-button>
+      }
+    </section>
+    <section class="results" aria-label="Channel results">
+      <p class="result-count" role="status">{{ results().length }} provider mappings found</p>
+      @if (!results().length) {
+      <div class="empty">
+        <h2>No channels match your current filters.</h2>
+        <ion-button (click)="clearFilters()">Clear filters</ion-button>
+      </div>
+      } @else {
+      <ul class="channel-list">
+        @for (result of visibleResults(); track $index) {
+        <li class="channel">
+          <span class="number">{{ result.mapping.number }}</span>
+          <div>
+            <h2>{{ result.channel.name }}</h2>
+            <p class="details">
+              <span>{{ result.provider.name }}</span>
+              @if (result.channel.language) { <span> · {{ result.channel.language }}</span> } @if (result.channel.genre)
+              { <span> · {{ result.channel.genre }}</span> } @if (result.channel.quality) {
+              <span> · {{ result.channel.quality }}</span> } @if (result.mapping.state) {
+              <span> · {{ result.mapping.state }}</span> } @if (result.mapping.city) {
+              <span> · {{ result.mapping.city }}</span> } @if (result.mapping.area) {
+              <span> · {{ result.mapping.area }}</span> }
+            </p>
+          </div>
+        </li>
+        }
+      </ul>
+      @if (visibleResults().length < results().length) {
+      <ion-button expand="block" fill="outline" (click)="showMore()">
+        Show more channels ({{ results().length - visibleResults().length }} remaining)
+      </ion-button>
+      } }
     </section>
     }
-    <section class="finder" [class.finder-unavailable]="!channelDataReady()" aria-label="TV channel search">
-      <ion-item
-        ><ion-label>Provider</ion-label
-        ><ion-select
-          placeholder="Available after installing TV data"
-          [disabled]="!channelDataReady()"></ion-select></ion-item
-      ><ion-searchbar
-        [value]="query()"
-        (ionInput)="query.set($any($event.detail.value) ?? '')"
-        [disabled]="!channelDataReady()"
-        placeholder="Search channel or number"
-        aria-label="Search channel or number"></ion-searchbar>
-      <p>
-        Provider selection and search become available when TV data is installed. Missing mappings will show “Not
-        available in installed data”.
-      </p>
-    </section>
-  </main></ion-content
->
+  </main>
+</ion-content>
