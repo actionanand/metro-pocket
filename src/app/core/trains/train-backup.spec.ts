@@ -1,67 +1,115 @@
-import { createTrainBackup, parseTrainBackup, validateTrainBackup, MAX_TRAIN_BACKUP_BYTES } from './train-backup';
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
+import initSqlJs, { type SqlJsStatic } from 'sql.js';
+import { gzipSync } from 'fflate';
+import { openTrainBackup, MAX_TRAIN_BACKUP_BYTES } from './train-backup';
+import { trainDatabaseFixture } from './train-database-test-fixtures';
 import { sampleTrain } from './train-test-fixtures';
 
-describe('Train JSON backups', () => {
-  it('round-trips version, optional name, daily days, timestamps and every stop', () => {
+let engine: SqlJsStatic;
+beforeAll(async () => {
+  engine = await initSqlJs({
+    wasmBinary: Uint8Array.from(readFileSync('node_modules/sql.js/dist/sql-wasm.wasm')).buffer,
+  });
+});
+
+describe('Raw SQLite Train backup validation', () => {
+  it('validates one platform-independent DB with optional name, Daily and all stops', () => {
     const train = sampleTrain();
     delete train.trainName;
-    const backup = createTrainBackup([train], '2026-10-13T12:00:00.000Z');
-    expect(backup.format).toBe('metropocket-trains');
-    expect(backup.schemaVersion).toBe(1);
-    expect(JSON.stringify(backup)).not.toContain('trainName');
-    expect(parseTrainBackup(JSON.stringify(backup))).toEqual(backup);
-    expect(backup.trains[0].stops).toHaveLength(3);
-    expect(backup.trains[0].runningDays).toHaveLength(7);
+    const opened = openTrainBackup(engine, trainDatabaseFixture(engine, [train]));
+    try {
+      expect(opened.summary).toEqual({ trainCount: 1, stopCount: 3, exportedAt: undefined });
+    } finally {
+      opened.database.close();
+    }
   });
-  it('allows an empty backup for explicit replace-all clearing', () =>
-    expect(parseTrainBackup(JSON.stringify(createTrainBackup([]))).trains).toEqual([]));
-  it('rejects invalid JSON', () => expect(() => parseTrainBackup('{broken')).toThrow('not valid JSON'));
-  it('rejects an oversized backup', () =>
-    expect(() => parseTrainBackup('x'.repeat(MAX_TRAIN_BACKUP_BYTES + 1))).toThrow('at most 20 MB'));
-  it.each([
-    [{ format: 'other' }, 'not a MetroPocket'],
-    [{ schemaVersion: 2 }, 'schema version is not supported'],
-    [{ exportedAt: 'yesterday' }, 'ISO timestamp'],
-    [{ exportedAt: '2026-02-30T12:00:00.000Z' }, 'ISO timestamp'],
-    [{ trains: {} }, 'must be an array'],
-  ])('validates backup envelope', (change, message) =>
-    expect(() => validateTrainBackup({ ...createTrainBackup([]), ...change })).toThrow(message),
-  );
-  it('rejects duplicate train numbers', () =>
-    expect(() => createTrainBackup([sampleTrain(), sampleTrain()])).toThrow('duplicate train number'));
-  it.each([
-    [{ trainNumber: 123 }, 'stored as text'],
-    [{ trainNumber: 'bad' }, 'stored as text'],
-    [{ runningDays: ['FUNDAY'] }, 'MON–SUN'],
-    [{ runningDays: ['MON', 'MON'] }, 'unique'],
-    [{ trainName: 123 }, 'trainName'],
-    [{ createdAt: 'bad' }, 'ISO timestamps'],
-    [{ updatedAt: '2025-01-01T00:00:00.000Z' }, 'must not precede'],
-    [{ stops: [] }, 'schedule needs'],
-  ])('rejects malformed trains', (change, message) => {
-    const backup = { ...createTrainBackup([]), trains: [{ ...sampleTrain(), ...change }] };
-    expect(() => validateTrainBackup(backup)).toThrow(message);
+  it('accepts an empty v1 database for confirmed full replacement', () => {
+    const opened = openTrainBackup(engine, trainDatabaseFixture(engine, []));
+    expect(opened.summary.trainCount).toBe(0);
+    opened.database.close();
   });
-  it.each([
-    [{ sequence: 0 }, 'positive integer'],
-    [{ stationName: '' }, 'stationName is required'],
-    [{ stationName: 123 }, 'stationName is required'],
-    [{ arrivalTime: '7pm' }, 'HH:mm'],
-    [{ departureTime: undefined, arrivalTime: undefined }, 'arrivalTime or departureTime'],
-    [{ dayOffset: -1 }, 'non-negative'],
-    [{ arrivalTime: '23:55', departureTime: '00:05' }, 'must not precede'],
-  ])('rejects malformed stops', (change, message) => {
-    const train = sampleTrain();
-    const backup = { ...createTrainBackup([]), trains: [{ ...train, stops: [{ ...train.stops[0], ...change }] }] };
-    expect(() => validateTrainBackup(backup)).toThrow(message);
-  });
-  it('rejects duplicate stop sequences and backwards offset chronology', () => {
-    const train = sampleTrain();
-    expect(() => createTrainBackup([{ ...train, stops: [train.stops[0], train.stops[0]] }])).toThrow(
-      'duplicate sequence',
+  it('reads optional export metadata from the SQLite database', () => {
+    const opened = openTrainBackup(
+      engine,
+      trainDatabaseFixture(engine, [sampleTrain()], db =>
+        db.run("INSERT INTO metadata VALUES ('exportedAt','2026-10-13T12:00:00.000Z')"),
+      ),
     );
+    expect(opened.summary.exportedAt).toBe('2026-10-13T12:00:00.000Z');
+    opened.database.close();
+  });
+  it.each([new TextEncoder().encode('{"format":"metropocket-trains"}').buffer, new Uint8Array([1, 2, 3]).buffer])(
+    'rejects non-SQLite input',
+    bytes => expect(() => openTrainBackup(engine, bytes)).toThrow('raw SQLite'),
+  );
+  it('rejects gzip bytes labelled as .db', () =>
     expect(() =>
-      createTrainBackup([{ ...train, stops: [train.stops[0], { ...train.stops[1], dayOffset: 0 }] }]),
-    ).toThrow('move backwards');
+      openTrainBackup(engine, Uint8Array.from(gzipSync(new Uint8Array(trainDatabaseFixture(engine)))).buffer),
+    ).toThrow('raw SQLite'));
+  it('rejects oversized files', () =>
+    expect(() => openTrainBackup(engine, new ArrayBuffer(MAX_TRAIN_BACKUP_BYTES + 1))).toThrow('20 MB'));
+  it('rejects a corrupt/truncated database even when its header is SQLite', () => {
+    expect(() => openTrainBackup(engine, trainDatabaseFixture(engine).slice(0, 20))).toThrow('Invalid Train backup');
+  });
+  it('rejects unrelated SQLite databases', () => {
+    const database = new engine.Database();
+    database.run('CREATE TABLE unrelated (name TEXT)');
+    const bytes = Uint8Array.from(database.export()).buffer;
+    database.close();
+    expect(() => openTrainBackup(engine, bytes)).toThrow('Invalid Train backup');
+  });
+  it.each([
+    ['DROP TABLE metadata', 'metadata'],
+    ["UPDATE metadata SET value='other-app' WHERE key='databaseName'", 'identity'],
+    ["UPDATE metadata SET value='2' WHERE key='schemaVersion'", 'schema version'],
+    ['DROP TABLE train_stops', 'incomplete'],
+    ["INSERT INTO metadata VALUES ('format','another-app')", 'not a MetroPocket'],
+    ["INSERT INTO metadata VALUES ('exportedAt','2026-02-30T00:00:00.000Z')", 'export time'],
+    ['CREATE TRIGGER unwanted AFTER DELETE ON trains BEGIN DELETE FROM trains; END', 'unsupported'],
+  ])('rejects incompatible identity/schema: %s', (sql, message) => {
+    const bytes = trainDatabaseFixture(engine, [sampleTrain()], database => database.run(sql));
+    expect(() => openTrainBackup(engine, bytes)).toThrow(message);
+  });
+  it('rejects foreign-key-invalid stops', () => {
+    const bytes = trainDatabaseFixture(engine, [sampleTrain()], db => {
+      db.run('PRAGMA foreign_keys=OFF');
+      db.run("INSERT INTO train_stops VALUES ('99999',1,NULL,'Orphan Station',NULL,'06:00',0)");
+    });
+    expect(() => openTrainBackup(engine, bytes)).toThrow('integrity');
+  });
+  it('rejects an integrity failure caused by violated SQLite CHECK constraints', () => {
+    const bytes = trainDatabaseFixture(engine, [sampleTrain()], db => {
+      db.run('PRAGMA ignore_check_constraints=ON');
+      db.run('UPDATE trains SET running_days_mask=0');
+    });
+    expect(() => openTrainBackup(engine, bytes)).toThrow('integrity');
+  });
+  it.each([
+    ["UPDATE trains SET train_number='ABC'", 'stored as text'],
+    ["UPDATE trains SET train_name=''", 'trainName'],
+    ["UPDATE trains SET created_at='bad'", 'ISO timestamps'],
+    ["UPDATE train_stops SET departure_time='25:70' WHERE stop_sequence=1", 'HH:mm'],
+    ["UPDATE train_stops SET station_name='' WHERE stop_sequence=1", 'stationName'],
+    ['UPDATE train_stops SET day_offset=0 WHERE stop_sequence=2', 'move backwards'],
+    ['DELETE FROM train_stops', 'schedule needs'],
+  ])('validates all train and stop values: %s', (sql, message) => {
+    const bytes = trainDatabaseFixture(engine, [sampleTrain()], db => {
+      db.run('PRAGMA foreign_keys=OFF');
+      db.run(sql);
+    });
+    // A changed primary-key value also leaves orphans; integrity must reject those
+    // before semantic validation. Test numbers with no stops instead below.
+    expect(() => openTrainBackup(engine, bytes)).toThrow(sql.includes('train_number') ? 'integrity' : message);
+  });
+  it('rejects missing primary-key/foreign-key constraints rather than accepting duplicate rows', () => {
+    const bytes = trainDatabaseFixture(engine, [], db => {
+      db.run(`DROP TABLE train_stops;
+        CREATE TABLE train_stops (train_number TEXT NOT NULL, stop_sequence INTEGER NOT NULL,
+          station_code TEXT, station_name TEXT NOT NULL, arrival_time TEXT, departure_time TEXT,
+          day_offset INTEGER NOT NULL DEFAULT 0);
+        INSERT INTO train_stops VALUES ('00123',1,NULL,'Duplicate',NULL,'06:00',0),('00123',1,NULL,'Duplicate',NULL,'06:00',0);`);
+    });
+    expect(() => openTrainBackup(engine, bytes)).toThrow('incompatible');
   });
 });

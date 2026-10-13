@@ -19,7 +19,9 @@ export class TrainDataStorageService {
         const result = request.result;
         if (
           result &&
-          (!(result.bytes instanceof ArrayBuffer) || !Number.isSafeInteger(result.revision) || result.revision < 1)
+          (Object.prototype.toString.call(result.bytes) !== '[object ArrayBuffer]' ||
+            !Number.isSafeInteger(result.revision) ||
+            result.revision < 1)
         ) {
           reject(new Error('Saved train storage is invalid. Your data has not been changed.'));
         } else resolve(result);
@@ -29,7 +31,11 @@ export class TrainDataStorageService {
     });
   }
 
-  async save(bytes: ArrayBuffer, expectedRevision: number): Promise<void> {
+  async save(
+    bytes: ArrayBuffer,
+    expectedRevision: number,
+    validateStored?: (bytes: ArrayBuffer) => void,
+  ): Promise<void> {
     const db = await this.open();
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction('sqlite', 'readwrite');
@@ -46,7 +52,21 @@ export class TrainDataStorageService {
           return;
         }
         try {
-          store.put({ bytes, revision: expectedRevision + 1 } satisfies TrainDatabaseSnapshot, 'trains');
+          const put = store.put({ bytes, revision: expectedRevision + 1 } satisfies TrainDatabaseSnapshot, 'trains');
+          if (validateStored)
+            put.onsuccess = () => {
+              const stored = store.get('trains') as IDBRequest<TrainDatabaseSnapshot>;
+              stored.onsuccess = () => {
+                try {
+                  // Reopen stored bytes before this transaction commits. Aborting
+                  // restores the original record, including an absent record.
+                  validateStored(stored.result.bytes);
+                } catch (cause) {
+                  failure = cause instanceof Error ? cause : new Error('Restored train validation failed.');
+                  transaction.abort();
+                }
+              };
+            };
         } catch (cause) {
           failure = cause instanceof Error ? cause : new Error('Unable to save train data.');
           transaction.abort();

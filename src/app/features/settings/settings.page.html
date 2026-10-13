@@ -19,7 +19,15 @@
       ></ion-list
     ><app-train-data></app-train-data>
     <ion-list inset="true"
-      ><ion-item routerLink="/offline-data" detail="true"
+      >@if (platform.isWeb()) {
+      <ion-item routerLink="/train-guide" detail="true"
+        ><ion-label
+          ><h2>Train CSV Guide</h2>
+          <p>Learn how to prepare and import a train schedule CSV.</p></ion-label
+        ></ion-item
+      >
+      }
+      <ion-item routerLink="/offline-data" detail="true"
         ><ion-label
           ><h2>Offline data</h2>
           <p>Check updates and manage downloaded Metro and TV packs.</p></ion-label

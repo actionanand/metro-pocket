@@ -8,7 +8,11 @@ import { SQLITE_LOADER } from '../database/sqlite-engine.service';
 import { queryRows, SqlitePackReaderService } from '../database/sqlite-pack-reader.service';
 import { TrainRepositoryService } from './train-repository.service';
 import { TrainDataStorageService } from './train-data-storage.service';
-import { createTrainBackup } from './train-backup';
+import { openTrainBackup } from './train-backup';
+import { trainDatabaseFixture } from './train-database-test-fixtures';
+import { readUserTrain } from './train-database';
+import { AppPlatformService } from '../platform/app-platform.service';
+import type { UserTrain } from '../../shared/models/train.models';
 import { sampleTrain } from './train-test-fixtures';
 
 let engine: SqlJsStatic;
@@ -16,6 +20,7 @@ let engine: SqlJsStatic;
 describe('Writable train SQLite and IndexedDB integration', () => {
   let repository: TrainRepositoryService;
   let storage: TrainDataStorageService;
+  let web = true;
   const loader = vi.fn();
   beforeAll(async () => {
     engine = await initSqlJs({
@@ -24,14 +29,24 @@ describe('Writable train SQLite and IndexedDB integration', () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    web = true;
     vi.stubGlobal('indexedDB', new IDBFactory());
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Train code must not fetch.')));
     loader.mockResolvedValue(engine);
-    TestBed.configureTestingModule({ providers: [{ provide: SQLITE_LOADER, useValue: loader }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SQLITE_LOADER, useValue: loader },
+        { provide: AppPlatformService, useValue: { isWeb: () => web, isAndroid: () => !web } },
+      ],
+    });
     repository = TestBed.inject(TrainRepositoryService);
     storage = TestBed.inject(TrainDataStorageService);
   });
   afterEach(() => vi.unstubAllGlobals());
+
+  async function restore(trains: UserTrain[]): Promise<void> {
+    await repository.restoreBackup(await repository.previewBackup(trainDatabaseFixture(engine, trains)));
+  }
 
   async function modifySnapshot(change: (db: Database) => void): Promise<void> {
     const snapshot = (await storage.load())!;
@@ -105,7 +120,7 @@ describe('Writable train SQLite and IndexedDB integration', () => {
     expect((await storage.load())!.revision).toBe(revision);
   });
   it('atomically replaces a train, removes old stops and preserves creation time', async () => {
-    await repository.restoreBackup(createTrainBackup([sampleTrain()]), 'merge');
+    await restore([sampleTrain()]);
     const next = {
       ...sampleTrain('00123', 'Replacement'),
       stops: [{ sequence: 1, stationName: 'New Origin', departureTime: '06:00', dayOffset: 0 }],
@@ -158,7 +173,12 @@ describe('Writable train SQLite and IndexedDB integration', () => {
     const before = await storage.load();
     expect(await new TrainDataStorageService().load()).toEqual(before);
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [{ provide: SQLITE_LOADER, useValue: loader }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SQLITE_LOADER, useValue: loader },
+        { provide: AppPlatformService, useValue: { isWeb: () => web, isAndroid: () => !web } },
+      ],
+    });
     const reloaded = TestBed.inject(TrainRepositoryService);
     expect((await reloaded.get('00123'))!.stops).toHaveLength(3);
     expect(await reloaded.list()).toHaveLength(1);
@@ -209,69 +229,148 @@ describe('Writable train SQLite and IndexedDB integration', () => {
     expect(loader).toHaveBeenCalledTimes(1);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it('exports only user trains with all original timestamps and stops', async () => {
-    await repository.restoreBackup(createTrainBackup([sampleTrain()]), 'merge');
+  it('exports raw SQLite with identity/export metadata, every train and unchanged internal gzip storage', async () => {
+    await restore([sampleTrain()]);
+    const before = await storage.load();
     const backup = await repository.exportBackup();
-    expect(backup.format).toBe('metropocket-trains');
-    expect(backup.schemaVersion).toBe(1);
-    expect(backup.trains).toEqual([sampleTrain()]);
-    expect(backup).not.toHaveProperty('packs');
+    expect(new TextDecoder().decode(new Uint8Array(backup.bytes).subarray(0, 16))).toBe('SQLite format 3\0');
+    const opened = openTrainBackup(engine, backup.bytes);
+    try {
+      expect(opened.summary).toEqual({ trainCount: 1, stopCount: 3, exportedAt: backup.exportedAt });
+      expect(readUserTrain(opened.database, '00123')).toEqual(sampleTrain());
+      expect(queryRows(opened.database, "SELECT value FROM metadata WHERE key='format'")[0]['value']).toBe(
+        'metropocket-user-trains',
+      );
+    } finally {
+      opened.database.close();
+    }
+    expect(await storage.load()).toEqual(before);
   });
-  it('previews matches/new trains before writing, then merges matching replacements only', async () => {
+  it('previews train/stop/current-device counts without changing saved data', async () => {
+    await repository.importTrain(sampleTrain());
+    const before = await storage.load();
+    const preview = await repository.previewBackup(
+      trainDatabaseFixture(engine, [sampleTrain('99999'), sampleTrain('88888')]),
+    );
+    expect(preview).toMatchObject({ trainCount: 2, stopCount: 6, currentCount: 1, currentRevision: before!.revision });
+    expect(await storage.load()).toEqual(before);
+  });
+  it('confirmed restore replaces the whole DB, including unrelated current trains, and publishes state', async () => {
     await repository.importTrain(sampleTrain());
     await repository.importTrain(sampleTrain('77777'));
-    const backup = createTrainBackup([sampleTrain('00123', 'Changed'), sampleTrain('99999')]);
-    const before = await storage.load();
-    expect(await repository.previewBackup(backup)).toEqual({ existing: 1, added: 1 });
-    expect(await storage.load()).toEqual(before);
-    await repository.restoreBackup(backup, 'merge');
-    expect((await repository.list()).map(train => train.trainNumber)).toEqual(['00123', '77777', '99999']);
-    expect((await repository.get('00123'))!.trainName).toBe('Changed');
-  });
-  it('replace-all imports only backup trains, and accepts an explicitly empty backup', async () => {
-    await repository.importTrain(sampleTrain());
-    await repository.restoreBackup(createTrainBackup([sampleTrain('99999')]), 'replace-all');
+    const changes = repository.changes();
+    await restore([sampleTrain('99999', 'Restored')]);
     expect((await repository.list()).map(train => train.trainNumber)).toEqual(['99999']);
-    await repository.restoreBackup(createTrainBackup([]), 'replace-all');
+    expect(repository.trainCount()).toBe(1);
+    expect(repository.changes()).toBe(changes + 1);
+    expect((await repository.get('99999'))!.trainName).toBe('Restored');
+  });
+  it('an explicitly restored empty DB clears user trains and publishes zero', async () => {
+    await repository.importTrain(sampleTrain());
+    await restore([]);
     expect(await repository.count()).toBe(0);
+    expect(repository.trainCount()).toBe(0);
     expect(await inspect(db => queryRows(db, 'SELECT COUNT(*) AS count FROM train_stops')[0]['count'])).toBe(0);
   });
-  it.each(['merge', 'replace-all'] as const)('failed %s import preserves every previous train', async mode => {
+  it('failed persistence retains old bytes and reactive state', async () => {
     await repository.importTrain(sampleTrain());
-    await modifySnapshot(db =>
-      db.run(`CREATE TRIGGER reject_train BEFORE INSERT ON trains
-      WHEN NEW.train_number = '99999' BEGIN SELECT RAISE(ABORT, 'Backup insert failure'); END;`),
-    );
+    const preview = await repository.previewBackup(trainDatabaseFixture(engine, [sampleTrain('99999')]));
     const before = await storage.load();
-    await expect(
-      repository.restoreBackup(createTrainBackup([sampleTrain('88888'), sampleTrain('99999')]), mode),
-    ).rejects.toThrow('Backup insert failure');
+    const changes = repository.changes();
+    vi.spyOn(storage, 'save').mockRejectedValueOnce(new Error('Storage quota exceeded'));
+    await expect(repository.restoreBackup(preview)).rejects.toThrow('Storage quota exceeded');
+    expect(await storage.load()).toEqual(before);
+    expect(repository.trainCount()).toBe(1);
+    expect(repository.changes()).toBe(changes);
+  });
+  it('post-put reopen/validation failure aborts the IDB transaction and restores the exact prior record', async () => {
+    await repository.importTrain(sampleTrain());
+    const preview = await repository.previewBackup(trainDatabaseFixture(engine, [sampleTrain('99999')]));
+    const before = await storage.load();
+    const save = storage.save.bind(storage);
+    vi.spyOn(storage, 'save').mockImplementationOnce((_, revision, validateStored) =>
+      save(Uint8Array.from(gzipSync(new Uint8Array([1, 2, 3]))).buffer, revision, validateStored),
+    );
+    await expect(repository.restoreBackup(preview)).rejects.toThrow('raw SQLite');
     expect(await storage.load()).toEqual(before);
     expect((await repository.list()).map(train => train.trainNumber)).toEqual(['00123']);
   });
-  it.each(['merge', 'replace-all'] as const)(
-    'failed %s persistence retains the previous durable backup',
-    async mode => {
-      await repository.importTrain(sampleTrain());
-      const before = await storage.load();
-      vi.spyOn(storage, 'save').mockRejectedValueOnce(new Error('Storage quota exceeded'));
-      await expect(repository.restoreBackup(createTrainBackup([sampleTrain('99999')]), mode)).rejects.toThrow(
-        'Storage quota exceeded',
-      );
-      expect(await storage.load()).toEqual(before);
-      expect((await repository.list()).map(train => train.trainNumber)).toEqual(['00123']);
-    },
-  );
-  it('rejects malformed backups and future versions before deleting anything', async () => {
+  it('a failed post-put check also preserves previously empty storage', async () => {
+    const bytes = Uint8Array.from(gzipSync(new Uint8Array(trainDatabaseFixture(engine)))).buffer;
+    await expect(
+      storage.save(bytes, 0, () => {
+        throw new Error('Reopen failed');
+      }),
+    ).rejects.toThrow('Reopen failed');
+    expect(await storage.load()).toBeUndefined();
+  });
+  it('revalidates candidates before replacement and rejects changed bytes', async () => {
+    await repository.importTrain(sampleTrain());
+    const preview = await repository.previewBackup(trainDatabaseFixture(engine, [sampleTrain('99999')]));
+    const before = await storage.load();
+    await expect(repository.restoreBackup({ ...preview, bytes: new Uint8Array([1]).buffer })).rejects.toThrow(
+      'raw SQLite',
+    );
+    expect(await storage.load()).toEqual(before);
+  });
+  it('does not overwrite train data changed after preview', async () => {
+    const preview = await repository.previewBackup(trainDatabaseFixture(engine));
+    await repository.importTrain(sampleTrain('99999'));
+    const before = await storage.load();
+    await expect(repository.restoreBackup(preview)).rejects.toThrow('changed after this preview');
+    expect(await storage.load()).toEqual(before);
+  });
+  it('invalid/future candidate databases do not change the current database', async () => {
     await repository.importTrain(sampleTrain());
     const before = await storage.load();
-    await expect(
-      repository.restoreBackup(
-        { ...createTrainBackup([]), schemaVersion: 2 } as unknown as ReturnType<typeof createTrainBackup>,
-        'replace-all',
-      ),
-    ).rejects.toThrow('schema version');
+    const bytes = trainDatabaseFixture(engine, [], db =>
+      db.run("UPDATE metadata SET value='2' WHERE key='schemaVersion'"),
+    );
+    await expect(repository.previewBackup(bytes)).rejects.toThrow('schema version');
     expect(await storage.load()).toEqual(before);
+  });
+  it('Android cannot create CSV schedules but can restore and delete them', async () => {
+    web = false;
+    await expect(repository.importTrain(sampleTrain())).rejects.toThrow('only on Web/PWA');
+    expect(await storage.load()).toBeUndefined();
+    await restore([sampleTrain()]);
+    expect(repository.trainCount()).toBe(1);
+    await repository.deleteTrain('00123');
+    expect(repository.trainCount()).toBe(0);
+  });
+  it.each([
+    ['web', 'web'],
+    ['web', 'android'],
+    ['android', 'web'],
+    ['android', 'android'],
+  ])('uses the same exported DB from %s to %s and survives target reload', async (from, to) => {
+    web = from === 'web';
+    if (web) await repository.importTrain(sampleTrain());
+    else await restore([sampleTrain()]);
+    const backup = await repository.exportBackup();
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    TestBed.resetTestingModule();
+    web = to === 'web';
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SQLITE_LOADER, useValue: loader },
+        { provide: AppPlatformService, useValue: { isWeb: () => web, isAndroid: () => !web } },
+      ],
+    });
+    repository = TestBed.inject(TrainRepositoryService);
+    storage = TestBed.inject(TrainDataStorageService);
+    await repository.restoreBackup(await repository.previewBackup(backup.bytes));
+    expect(await repository.count()).toBe(1);
+    const original = await repository.get('00123');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SQLITE_LOADER, useValue: loader },
+        { provide: AppPlatformService, useValue: { isWeb: () => web, isAndroid: () => !web } },
+      ],
+    });
+    expect(await TestBed.inject(TrainRepositoryService).get('00123')).toEqual(original);
+    expect(fetch).not.toHaveBeenCalled();
   });
   it('delete-all is persistent and isolated from the public pack database', async () => {
     await repository.importTrain(sampleTrain());

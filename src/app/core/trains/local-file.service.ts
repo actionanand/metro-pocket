@@ -6,8 +6,8 @@ import { Service, inject } from '@angular/core';
 export class LocalFileService {
   private readonly document = inject(DOCUMENT);
 
-  download(text: string, filename: string, mime: string): void {
-    const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  download(content: string | ArrayBuffer, filename: string, mime: string): void {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
     const anchor = this.document.createElement('a');
     anchor.href = url;
     anchor.download = filename;

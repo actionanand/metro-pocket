@@ -15,6 +15,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { ThemeService, type ThemePreference } from '../../core/theme/theme.service';
 import { TrainDataComponent } from './train-data.component';
+import { AppPlatformService } from '../../core/platform/app-platform.service';
 @Component({
   selector: 'app-settings',
   imports: [
@@ -37,6 +38,7 @@ import { TrainDataComponent } from './train-data.component';
 })
 export class SettingsPage {
   protected readonly theme = inject(ThemeService);
+  protected readonly platform = inject(AppPlatformService);
   private readonly trainData = viewChild(TrainDataComponent);
   async ionViewWillEnter(): Promise<void> {
     await this.trainData()?.refresh();

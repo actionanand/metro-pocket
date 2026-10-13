@@ -1,18 +1,19 @@
 import { Service, inject, signal } from '@angular/core';
 import { gzipSync, gunzipSync } from 'fflate';
-import type { Database, SqlValue } from 'sql.js';
+import type { Database } from 'sql.js';
 import { SqliteEngineService } from '../database/sqlite-engine.service';
 import { queryRows } from '../database/sqlite-pack-reader.service';
 import { TrainDataStorageService } from './train-data-storage.service';
-import { createTrainBackup, validateTrainBackup } from './train-backup';
+import { openTrainBackup, validateTrainDatabase, MAX_TRAIN_BACKUP_BYTES } from './train-backup';
+import { AppPlatformService } from '../platform/app-platform.service';
+import { readUserTrain, trainMetadata, trainSqlInteger as integer } from './train-database';
 import { validateTrainSchedule } from './train-validation';
 import { prepareTrainSchema } from './train-schema';
 import {
-  daysFromMask,
   runningDaysMask,
   type SavedTrainSummary,
   type TrainBackup,
-  type TrainRestoreMode,
+  type TrainRestorePreview,
   type TrainSchedule,
   type UserTrain,
 } from '../../shared/models/train.models';
@@ -23,40 +24,16 @@ export class TrainAlreadyExistsError extends Error {
   }
 }
 
-function text(value: SqlValue | undefined): string {
-  if (typeof value !== 'string') throw new Error('Saved train data contains an invalid text value.');
-  return value;
-}
-
-function integer(value: SqlValue | undefined): number {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value))
-    throw new Error('Saved train data contains an invalid integer.');
-  return value;
-}
-
-function optionalText(value: SqlValue | undefined): string | undefined {
-  return value === null ? undefined : text(value);
-}
-
-function trainMetadata(row: Record<string, SqlValue>): Omit<UserTrain, 'stops'> {
-  const mask = integer(row['running_days_mask']);
-  if (mask < 1 || mask > 127) throw new Error('Saved train running days are invalid.');
-  return {
-    trainNumber: text(row['train_number']),
-    trainName: optionalText(row['train_name']),
-    runningDays: daysFromMask(mask),
-    createdAt: text(row['created_at']),
-    updatedAt: text(row['updated_at']),
-  };
-}
-
 /** Writable user data. Every operation opens its own DB; public packs stay query-only. */
 @Service()
 export class TrainRepositoryService {
   private readonly engine = inject(SqliteEngineService);
+  private readonly platform = inject(AppPlatformService);
   private readonly storage = inject(TrainDataStorageService);
   private pending: Promise<void> = Promise.resolve();
   readonly changes = signal(0);
+  readonly trainCount = signal<number | null>(null);
+  readonly stateError = signal('');
 
   async list(search = ''): Promise<SavedTrainSummary[]> {
     const pattern = `%${search.trim().replace(/[\\%_]/g, character => '\\' + character)}%`;
@@ -78,17 +55,33 @@ export class TrainRepositoryService {
   }
 
   async count(): Promise<number> {
-    return this.read(database => integer(queryRows(database, 'SELECT COUNT(*) AS count FROM trains')[0]['count']));
+    const generation = this.changes();
+    try {
+      const count = await this.read(database =>
+        integer(queryRows(database, 'SELECT COUNT(*) AS count FROM trains')[0]['count']),
+      );
+      if (generation !== this.changes()) return this.count();
+      this.trainCount.set(count);
+      this.stateError.set('');
+      return count;
+    } catch (cause) {
+      this.stateError.set(cause instanceof Error ? cause.message : 'Unable to read saved train data.');
+      throw cause;
+    }
   }
 
   async get(number: string): Promise<UserTrain | undefined> {
-    return this.read(database => this.getTrain(database, number));
+    return this.read(database => readUserTrain(database, number));
   }
 
   async importTrain(input: TrainSchedule, replace = false): Promise<void> {
+    if (!this.platform.isWeb())
+      throw new Error(
+        'Creating train schedules from CSV is available only on Web/PWA. Restore a Train backup from Settings.',
+      );
     const schedule = validateTrainSchedule(input);
     await this.write(database => {
-      const old = this.getTrain(database, schedule.trainNumber);
+      const old = readUserTrain(database, schedule.trainNumber);
       if (old && !replace) throw new TrainAlreadyExistsError(schedule.trainNumber);
       const now = new Date(
         Math.max(Date.now(), Date.parse(old?.createdAt ?? '') || 0, Date.parse(old?.updatedAt ?? '') || 0),
@@ -107,52 +100,74 @@ export class TrainRepositoryService {
 
   async exportBackup(): Promise<TrainBackup> {
     return this.read(database => {
-      const numbers = queryRows(database, 'SELECT train_number FROM trains ORDER BY train_number');
-      return createTrainBackup(numbers.map(row => this.getTrain(database, text(row['train_number']))!));
-    });
-  }
-
-  async previewBackup(backup: TrainBackup): Promise<{ existing: number; added: number }> {
-    const valid = validateTrainBackup(backup);
-    return this.read(database => {
-      const numbers = new Set(
-        queryRows(database, 'SELECT train_number FROM trains').map(row => text(row['train_number'])),
+      validateTrainDatabase(database);
+      const exportedAt = new Date().toISOString();
+      database.run(
+        "INSERT OR REPLACE INTO metadata (key, value) VALUES ('format', 'metropocket-user-trains'), ('exportedAt', ?)",
+        [exportedAt],
       );
-      const existing = valid.trains.filter(train => numbers.has(train.trainNumber)).length;
-      return { existing, added: valid.trains.length - existing };
+      const summary = validateTrainDatabase(database);
+      const bytes = Uint8Array.from(database.export()).buffer;
+      if (bytes.byteLength > MAX_TRAIN_BACKUP_BYTES)
+        throw new Error('The Train database exceeds the supported 20 MB backup size.');
+      return { ...summary, bytes };
     });
   }
 
-  async restoreBackup(input: TrainBackup, mode: TrainRestoreMode): Promise<void> {
-    const backup = validateTrainBackup(input);
-    if (mode !== 'merge' && mode !== 'replace-all') throw new Error('Choose Merge or Replace all train data.');
-    await this.write(database => {
-      if (mode === 'replace-all') database.run('DELETE FROM trains');
-      for (const train of backup.trains) this.insert(database, train);
-    });
+  async previewBackup(bytes: ArrayBuffer): Promise<TrainRestorePreview> {
+    await this.pending;
+    const copy = Uint8Array.from(new Uint8Array(bytes)).buffer;
+    const engine = await this.engine.initialize();
+    const candidate = openTrainBackup(engine, copy);
+    try {
+      const snapshot = await this.storage.load();
+      const current = await this.open(snapshot?.bytes);
+      try {
+        return {
+          ...candidate.summary,
+          bytes: copy,
+          currentCount: integer(queryRows(current, 'SELECT COUNT(*) AS count FROM trains')[0]['count']),
+          currentRevision: snapshot?.revision ?? 0,
+        };
+      } finally {
+        current.close();
+      }
+    } finally {
+      candidate.database.close();
+    }
   }
 
-  private getTrain(database: Database, number: string): UserTrain | undefined {
-    const row = queryRows(
-      database,
-      'SELECT train_number, train_name, running_days_mask, created_at, updated_at FROM trains WHERE train_number = ?',
-      [number],
-    )[0];
-    if (!row) return undefined;
-    const stops = queryRows(
-      database,
-      `SELECT stop_sequence, station_code, station_name, arrival_time,
-      departure_time, day_offset FROM train_stops WHERE train_number = ? ORDER BY stop_sequence`,
-      [number],
-    ).map(stop => ({
-      sequence: integer(stop['stop_sequence']),
-      stationCode: optionalText(stop['station_code']),
-      stationName: text(stop['station_name']),
-      arrivalTime: optionalText(stop['arrival_time']),
-      departureTime: optionalText(stop['departure_time']),
-      dayOffset: integer(stop['day_offset']),
-    }));
-    return { ...trainMetadata(row), stops };
+  async restoreBackup(preview: TrainRestorePreview): Promise<void> {
+    await this.enqueue(async () => {
+      const snapshot = await this.storage.load();
+      if ((snapshot?.revision ?? 0) !== preview.currentRevision)
+        throw new Error('Train data changed after this preview. Choose the backup again before replacing it.');
+      const engine = await this.engine.initialize();
+      const candidate = openTrainBackup(engine, preview.bytes);
+      try {
+        if (candidate.summary.trainCount !== preview.trainCount || candidate.summary.stopCount !== preview.stopCount)
+          throw new Error('The backup changed after preview. Choose it again.');
+        const bytes = Uint8Array.from(gzipSync(candidate.database.export())).buffer;
+        await this.storage.save(bytes, preview.currentRevision, stored => {
+          const reopened = openTrainBackup(engine, Uint8Array.from(gunzipSync(new Uint8Array(stored))).buffer);
+          try {
+            if (
+              reopened.summary.trainCount !== candidate.summary.trainCount ||
+              reopened.summary.stopCount !== candidate.summary.stopCount
+            )
+              throw new Error('Restored Train data did not match the preview.');
+          } finally {
+            reopened.database.close();
+          }
+        });
+        // IDB commits only after the stored bytes reopen and validate successfully.
+        this.trainCount.set(candidate.summary.trainCount);
+        this.stateError.set('');
+        this.changes.update(value => value + 1);
+      } finally {
+        candidate.database.close();
+      }
+    });
   }
 
   private insert(database: Database, train: UserTrain): void {
@@ -217,7 +232,7 @@ export class TrainRepositoryService {
   }
 
   private write(mutate: (database: Database) => unknown): Promise<void> {
-    const operation = this.pending.then(async () => {
+    return this.enqueue(async () => {
       const snapshot = await this.storage.load();
       const database = await this.open(snapshot?.bytes);
       try {
@@ -226,13 +241,20 @@ export class TrainRepositoryService {
         database.run('COMMIT');
         // The candidate is disposable. A failed IDB commit leaves durable old bytes
         // untouched, and subsequent reads reopen those old bytes rather than this DB.
+        const count = integer(queryRows(database, 'SELECT COUNT(*) AS count FROM trains')[0]['count']);
         const bytes = Uint8Array.from(gzipSync(database.export())).buffer;
         await this.storage.save(bytes, snapshot?.revision ?? 0);
+        this.trainCount.set(count);
+        this.stateError.set('');
         this.changes.update(value => value + 1);
       } finally {
         database.close();
       }
     });
+  }
+
+  private enqueue(action: () => Promise<void>): Promise<void> {
+    const operation = this.pending.then(action);
     this.pending = operation.then(
       () => undefined,
       () => undefined,

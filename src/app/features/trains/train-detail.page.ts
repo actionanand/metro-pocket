@@ -51,6 +51,7 @@ export class TrainDetailPage {
     try {
       const alert = await this.alerts.create({
         header: `Delete train ${train.trainNumber}?`,
+        htmlAttributes: { role: 'dialog', 'aria-modal': 'true' },
         message: 'This removes its local schedule from this device.',
         buttons: [
           { text: 'Cancel', role: 'cancel' },

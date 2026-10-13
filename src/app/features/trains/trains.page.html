@@ -8,6 +8,7 @@
   <main class="page">
     <p class="eyebrow">YOUR OFFLINE SCHEDULES</p>
     <h1 #title tabindex="-1">My Trains</h1>
+    @if (platform.isWeb()) {
     <p class="intro">Import one train per CSV. Schedules stay on this device and are not live railway information.</p>
     <div class="actions">
       <input
@@ -21,12 +22,16 @@
       <ion-button fill="outline" [disabled]="busy()" (click)="downloadTemplate()">Download CSV Template</ion-button>
     </div>
     <p class="help">Example data demonstrates the CSV format only. Blank running_days means Daily.</p>
-    @if (busy()) {
+    @if (total()) {
+    <p class="help">Need help preparing a CSV? <a routerLink="/train-guide">View Train CSV Guide</a>.</p>
+    } } @else {
+    <p class="intro">Saved schedules stay on this device and are not live railway information.</p>
+    } @if (busy()) {
     <p role="status">Working with train data…</p>
     } @if (status()) {
     <p role="status">{{ status() }}</p>
     } @if (issues().length) {
-    <section class="notice" role="alert" aria-label="Train import or storage errors">
+    <section class="notice" role="alert" aria-label="Train file or storage errors">
       <ul>
         @for (issue of visibleIssues(); track $index) {
         <li>{{ issue }}</li>
@@ -36,7 +41,7 @@
       <p>{{ remainingIssues() }} more errors. Correct the file and try again.</p>
       }
     </section>
-    } @if (preview(); as schedule) {
+    } @if (platform.isWeb() && preview(); as schedule) {
     <section class="panel preview" #previewPanel tabindex="-1" aria-labelledby="csv-preview-title">
       <h2 id="csv-preview-title">Import preview</h2>
       <p class="train-number">{{ schedule.trainNumber }}</p>
@@ -89,8 +94,15 @@
       <p>Saved trains could not be opened. Your stored data has not been changed.</p>
       } @else if (!total()) {
       <div class="empty">
-        <h3>No saved trains yet</h3>
-        <p>Import a CSV to keep its stations and timings available offline.</p>
+        @if (platform.isWeb()) {
+        <h3>No trains saved yet</h3>
+        <p>Import a train schedule CSV to keep station timings available offline.</p>
+        <ion-button fill="outline" routerLink="/train-guide">How to prepare the CSV</ion-button>
+        } @else {
+        <h3>No train schedules on this device.</h3>
+        <p>Restore a MetroPocket Train backup from Settings to use saved train schedules.</p>
+        }
+        <ion-button fill="outline" routerLink="/settings">Restore Train Backup</ion-button>
       </div>
       } @else if (!trains().length) {
       <p role="status">No saved trains match your search.</p>

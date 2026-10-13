@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { patchTrainBackup } from './patch-train-backup.mjs';
 const root = process.cwd();
 const android = path.join(root, 'android');
 if (!existsSync(android)) throw new Error('android/ is missing. Run npm run android:add first.');
@@ -89,4 +90,5 @@ if (!rules.includes('METROPOCKET_CAPACITOR'))
     rulesFile,
     `${rules}\n# METROPOCKET_CAPACITOR\n-keep class com.getcapacitor.** { *; }\n-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }\n-keepclassmembers class * { @com.getcapacitor.PluginMethod <methods>; }\n`,
   );
-console.log('Applied MetroPocket Android privacy, version and R8 configuration.');
+await patchTrainBackup(android, appId);
+console.log('Applied MetroPocket Android privacy, version, Train backup and R8 configuration.');

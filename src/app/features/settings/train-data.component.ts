@@ -2,10 +2,9 @@ import { Component, ElementRef, computed, inject, signal, viewChild, type OnInit
 import { DatePipe } from '@angular/common';
 import { AlertController, IonButton } from '@ionic/angular';
 import { TrainRepositoryService } from '../../core/trains/train-repository.service';
-import { LocalFileService } from '../../core/trains/local-file.service';
-import { MAX_TRAIN_BACKUP_BYTES, parseTrainBackup } from '../../core/trains/train-backup';
+import { TrainBackupFilesService, type SelectedTrainBackup } from '../../core/trains/train-backup-files.service';
 import { TrainValidationError } from '../../core/trains/train-validation';
-import type { TrainBackup, TrainRestoreMode } from '../../shared/models/train.models';
+import type { TrainRestorePreview } from '../../shared/models/train.models';
 
 @Component({
   selector: 'app-train-data',
@@ -15,17 +14,16 @@ import type { TrainBackup, TrainRestoreMode } from '../../shared/models/train.mo
 })
 export class TrainDataComponent implements OnInit {
   private readonly repository = inject(TrainRepositoryService);
-  private readonly files = inject(LocalFileService);
+  private readonly files = inject(TrainBackupFilesService);
   private readonly alerts = inject(AlertController);
   private readonly previewPanel = viewChild<ElementRef<HTMLElement>>('previewPanel');
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
-  readonly count = signal<number | null>(null);
-  readonly countError = signal(false);
+  readonly count = this.repository.trainCount.asReadonly();
+  readonly countError = computed(() => !!this.repository.stateError());
   readonly busy = signal(false);
   readonly issues = signal<string[]>([]);
   readonly status = signal('');
-  readonly preview = signal<{ backup: TrainBackup; existing: number; added: number } | null>(null);
-  readonly mode = signal<TrainRestoreMode>('merge');
+  readonly preview = signal<(TrainRestorePreview & { filename: string }) | null>(null);
   readonly visibleIssues = computed(() => this.issues().slice(0, 10));
   readonly remainingIssues = computed(() => Math.max(0, this.issues().length - 10));
 
@@ -34,11 +32,9 @@ export class TrainDataComponent implements OnInit {
   }
 
   async refresh(): Promise<void> {
-    this.countError.set(false);
     try {
-      this.count.set(await this.repository.count());
+      await this.repository.count();
     } catch (cause) {
-      this.countError.set(true);
       this.showError(cause);
     }
   }
@@ -50,12 +46,17 @@ export class TrainDataComponent implements OnInit {
     this.status.set('');
     try {
       const backup = await this.repository.exportBackup();
-      this.files.download(
-        JSON.stringify(backup, null, 2),
-        `metropocket-trains-backup-${backup.exportedAt.slice(0, 10)}.json`,
-        'application/json',
+      const filename = `metropocket-trains-backup-${(backup.exportedAt ?? new Date().toISOString()).slice(0, 10)}.db`;
+      const result = await this.files.save(backup.bytes, filename);
+      this.status.set(
+        result === 'cancelled'
+          ? 'Train backup export cancelled.'
+          : result === 'downloaded'
+            ? 'Train backup download started.'
+            : result === 'shared'
+              ? 'Train backup shared.'
+              : 'Train backup saved.',
       );
-      this.status.set('Train backup download started. Keep this private file safe to restore your schedules.');
     } catch (cause) {
       this.showError(cause);
     } finally {
@@ -63,39 +64,21 @@ export class TrainDataComponent implements OnInit {
     }
   }
 
-  async selectBackup(event: Event): Promise<void> {
-    const input = event.target;
-    if (!(input instanceof HTMLInputElement)) return;
-    const file = input.files?.[0];
-    input.value = '';
-    if (file) await this.prepareBackup(file);
-  }
-
-  async prepareBackup(file: File): Promise<void> {
+  async chooseBackup(): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
     this.preview.set(null);
     this.issues.set([]);
     this.status.set('');
     try {
-      if (file.size > MAX_TRAIN_BACKUP_BYTES)
-        throw new TrainValidationError(['Backup is too large. Choose a file of at most 20 MB.']);
-      const backup = parseTrainBackup(await file.text());
-      const counts = await this.repository.previewBackup(backup);
-      this.mode.set('merge');
-      this.preview.set({ backup, ...counts });
-      requestAnimationFrame(() => this.previewPanel()?.nativeElement.focus());
+      const file = await this.files.choose();
+      if (file) await this.prepareCandidate(file);
+      else this.status.set('Train backup selection cancelled.');
     } catch (cause) {
       this.showError(cause);
     } finally {
       this.busy.set(false);
     }
-  }
-
-  changeMode(event: Event): void {
-    const input = event.target;
-    if (input instanceof HTMLSelectElement && (input.value === 'merge' || input.value === 'replace-all'))
-      this.mode.set(input.value);
   }
 
   cancelPreview(): void {
@@ -106,23 +89,25 @@ export class TrainDataComponent implements OnInit {
   async restoreBackup(): Promise<void> {
     const preview = this.preview();
     if (!preview || this.busy()) return;
-    const mode = this.mode();
     this.busy.set(true);
     this.issues.set([]);
+    this.status.set('');
     try {
+      const current = this.count() ?? preview.currentCount;
+      const warning = current
+        ? `This device currently contains ${current} trains. Restoring this backup will replace the existing Train data on this device.`
+        : 'This will restore the complete Train database on this device.';
       if (
-        mode === 'replace-all' &&
         !(await this.confirm(
-          'Replace all saved train schedules?',
-          'All current train schedules will be removed and replaced with this backup.',
-          'Replace All',
+          'Restore Train Backup?',
+          `This backup contains ${preview.trainCount} trains and ${preview.stopCount} station stops. ${warning}`,
+          current ? 'Replace & Restore' : 'Restore',
         ))
       )
         return;
-      await this.repository.restoreBackup(preview.backup, mode);
+      await this.repository.restoreBackup(preview);
       this.cancelPreview();
       this.status.set('Train backup restored on this device.');
-      await this.refresh();
     } catch (cause) {
       this.showError(cause);
     } finally {
@@ -139,7 +124,7 @@ export class TrainDataComponent implements OnInit {
       if (
         !(await this.confirm(
           'Delete all saved train schedules?',
-          'This cannot be undone unless you previously exported a backup. Metro and TV packs are not affected.',
+          'This cannot be undone unless you previously exported a Train backup. Metro and TV packs are not affected.',
           'Delete All',
         ))
       )
@@ -147,7 +132,6 @@ export class TrainDataComponent implements OnInit {
       await this.repository.deleteAll();
       this.cancelPreview();
       this.status.set('All saved train schedules deleted from this device.');
-      await this.refresh();
     } catch (cause) {
       this.showError(cause);
     } finally {
@@ -155,10 +139,17 @@ export class TrainDataComponent implements OnInit {
     }
   }
 
+  private async prepareCandidate(file: SelectedTrainBackup): Promise<void> {
+    const backup = await this.repository.previewBackup(file.bytes);
+    this.preview.set({ ...backup, filename: file.filename });
+    requestAnimationFrame(() => this.previewPanel()?.nativeElement.focus());
+  }
+
   private async confirm(header: string, message: string, action: string): Promise<boolean> {
     const alert = await this.alerts.create({
       header,
       message,
+      htmlAttributes: { role: 'dialog', 'aria-modal': 'true' },
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         { text: action, role: 'confirm' },

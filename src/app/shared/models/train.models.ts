@@ -26,14 +26,21 @@ export interface SavedTrainSummary extends Omit<UserTrain, 'stops'> {
   stopCount: number;
 }
 
-export interface TrainBackup {
-  format: 'metropocket-trains';
-  schemaVersion: 1;
-  exportedAt: string;
-  trains: UserTrain[];
+export interface TrainBackupSummary {
+  trainCount: number;
+  stopCount: number;
+  exportedAt?: string;
 }
 
-export type TrainRestoreMode = 'merge' | 'replace-all';
+export interface TrainBackup extends TrainBackupSummary {
+  /** Actual SQLite bytes, never the internal gzip snapshot. */
+  bytes: ArrayBuffer;
+}
+
+export interface TrainRestorePreview extends TrainBackup {
+  currentCount: number;
+  currentRevision: number;
+}
 
 export function runningDaysMask(days: readonly TrainDay[]): number {
   return days.reduce((mask, day) => mask | (1 << TRAIN_DAYS.indexOf(day)), 0);

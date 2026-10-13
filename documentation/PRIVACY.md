@@ -4,9 +4,11 @@ MetroPocket has no account, analytics, advertising, live train tracking or backe
 
 Downloaded data stays in browser/device-private application storage. Android backups and device-transfer export are disabled for this application data; release cleartext HTTP is disabled.
 
-Train schedules are user-managed local data, not public packs. CSV files are parsed
+Train schedules are user-managed local data, not public packs. Web/PWA CSV files are parsed
 and validated on-device, then saved in a separate writable SQLite database in
 IndexedDB. No CSV, timetable, or train search is uploaded or logged. Train features
-use no railway API, analytics, or location access. Settings exports/imports private
-versioned JSON train backups locally. Keep backups outside the app before changing
+use no railway API, analytics, or location access. Settings exports/restores raw
+SQLite `.db` Train backups locally on Web and Android, without a password or
+encryption. Android creates no schedules from CSV and exposes no CSV guide.
+Restore replaces all existing Train data after preview and confirmation. Keep backups outside the app before changing
 devices or clearing storage. Deleting train data does not delete Metro/TV packs.

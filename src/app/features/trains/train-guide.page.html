@@ -1,0 +1,119 @@
+<ion-header
+  ><ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/settings"></ion-back-button></ion-buttons>
+    <ion-title>Train CSV Guide</ion-title>
+  </ion-toolbar></ion-header
+>
+<ion-content
+  ><main class="page">
+    <h1>Train CSV Guide</h1>
+    <p>
+      Create one train per CSV on Web/PWA. The file stays on your device: no upload, API call or live railway service is
+      used. Imported schedules work offline after app assets load.
+    </p>
+    <ion-button (click)="downloadTemplate()">Download CSV Template</ion-button>
+    <ion-button fill="outline" routerLink="/trains">Open My Trains</ion-button>
+    @if (status()) {
+    <p role="status">{{ status() }}</p>
+    } @if (error()) {
+    <p role="alert">{{ error() }}</p>
+    }
+    <section>
+      <h2>Prepare the columns</h2>
+      <p>
+        Save as UTF-8 CSV (up to 2 MB). Quoted values, commas inside quoted station names, BOM, CRLF/LF and empty
+        optional cells are supported.
+      </p>
+      <dl>
+        <div>
+          <dt><code>train_number</code></dt>
+          <dd>
+            Required on the first data row. Use 1–10 digits; leading zeroes are preserved as text. Later blank cells
+            inherit it. A different non-empty train number is rejected.
+          </dd>
+        </div>
+        <div>
+          <dt><code>train_name</code></dt>
+          <dd>Optional. Later blanks inherit the name. Conflicting non-empty names are rejected.</dd>
+        </div>
+        <div>
+          <dt><code>running_days</code></dt>
+          <dd>
+            Optional. Missing, blank or whitespace on the first row means Daily. Use DAILY, Mon|Wed|Fri or
+            Monday|Wednesday|Friday. Names are case-insensitive; later blanks inherit the definition. Unknown days and
+            conflicting definitions are rejected.
+          </dd>
+        </div>
+        <div>
+          <dt><code>stop_sequence</code></dt>
+          <dd>
+            Optional. If every cell is blank, sequence follows CSV row order: 1, 2, 3… Otherwise every row needs a
+            positive integer. Partial specification and duplicate sequences are rejected. Stops sort by sequence.
+          </dd>
+        </div>
+        <div>
+          <dt><code>station_code</code></dt>
+          <dd>Optional station code.</dd>
+        </div>
+        <div>
+          <dt><code>station_name</code></dt>
+          <dd>Required on every row.</dd>
+        </div>
+        <div>
+          <dt><code>arrival_time</code> / <code>departure_time</code></dt>
+          <dd>
+            At least one is required on every row. Use strict 24-hour HH:mm, such as 06:05 or 23:59. The origin can have
+            only departure; the destination can have only arrival. Departure cannot precede arrival within a stop.
+          </dd>
+        </div>
+        <div>
+          <dt><code>day_offset</code></dt>
+          <dd>
+            Days after departure day: 0 for departure day, 1 for the next day, 2 for two days later. Either fill every
+            row with a non-negative integer or leave every row blank. Partial offsets and backwards offsets/times are
+            rejected.
+          </dd>
+        </div>
+      </dl>
+    </section>
+    <section>
+      <h2>Overnight journeys</h2>
+      <p>
+        With all day offsets blank, inference starts at day 0. If a stop's first time (arrival, otherwise departure) is
+        earlier than the previous stop's last time (departure, otherwise arrival), advance one day.
+      </p>
+      <p>
+        22:40 → 23:55 → 00:25 → 02:10 becomes day 0 → 0 → 1 → 1. Use explicit offsets for whole-day gaps that cannot be
+        inferred. A midnight dwell within one stop cannot be represented by one day offset and is rejected.
+      </p>
+    </section>
+    <section>
+      <h2>Fictional format example</h2>
+      <p>
+        Example data demonstrates the CSV format only. These are not real railway schedules. Blank running_days
+        intentionally means Daily.
+      </p>
+      <pre><code>{{ sample }}</code></pre>
+    </section>
+    <section>
+      <h2>Preview and replace</h2>
+      <p>
+        Choose Import Train CSV on My Trains, review the preview, then choose Import. Nothing is saved before
+        confirmation. If the train number already exists, Cancel keeps it; Replace Schedule atomically replaces only
+        that train. A failed import preserves its old schedule.
+      </p>
+    </section>
+    <section>
+      <h2>CSV and backups are different</h2>
+      <p>
+        CSV creates one train on Web/PWA. A Train DB backup is the complete Train database, exported as raw SQLite .db
+        from Settings without a password or encryption.
+      </p>
+      <p>
+        Restore Train Backup replaces all existing Train data after preview and confirmation. Use it to move schedules
+        between Web/PWA and Android. Android can restore and use schedules, but cannot import CSV or open this guide.
+      </p>
+      <ion-button fill="outline" routerLink="/settings">Open Train Data Settings</ion-button>
+    </section>
+  </main></ion-content
+>

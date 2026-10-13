@@ -1,4 +1,4 @@
-<section class="train-data" aria-labelledby="train-data-title">
+<section class="train-data" id="train-data" aria-labelledby="train-data-title">
   <h2 id="train-data-title" #title tabindex="-1">Train Data</h2>
   @if (countError()) {
     <p>Saved train count is unavailable. Your stored data has not been changed.</p>
@@ -10,14 +10,7 @@
   <p class="help">Export a backup before changing devices or clearing app storage. Train files stay on this device.</p>
   <div class="actions">
     <ion-button fill="outline" [disabled]="busy() || !count()" (click)="exportBackup()">Export Train Backup</ion-button>
-    <input
-      #backupInput
-      type="file"
-      accept=".json,application/json"
-      aria-label="Import train backup"
-      hidden
-      (change)="selectBackup($event)" />
-    <ion-button fill="outline" [disabled]="busy()" (click)="backupInput.click()">Import Train Backup</ion-button>
+    <ion-button fill="outline" [disabled]="busy()" (click)="chooseBackup()">Restore Train Backup</ion-button>
     <ion-button color="danger" fill="clear" [disabled]="busy() || !count()" (click)="deleteAll()"
       >Delete All Train Data</ion-button
     >
@@ -45,37 +38,38 @@
       <h3 id="backup-preview-title">Train backup preview</h3>
       <dl>
         <div>
-          <dt>Backup created</dt>
-          <dd>{{ imported.backup.exportedAt | date: 'medium' }}</dd>
+          <dt>File</dt>
+          <dd>{{ imported.filename }}</dd>
         </div>
+        @if (imported.exportedAt) {
+          <div>
+            <dt>Backup created</dt>
+            <dd>{{ imported.exportedAt | date: 'medium' }}</dd>
+          </div>
+        }
         <div>
           <dt>Trains</dt>
-          <dd>{{ imported.backup.trains.length }}</dd>
+          <dd>{{ imported.trainCount }}</dd>
         </div>
         <div>
-          <dt>Existing trains that would be replaced</dt>
-          <dd>{{ imported.existing }}</dd>
+          <dt>Station stops</dt>
+          <dd>{{ imported.stopCount }}</dd>
         </div>
         <div>
-          <dt>New trains</dt>
-          <dd>{{ imported.added }}</dd>
+          <dt>Current device</dt>
+          <dd>{{ count() ?? imported.currentCount }} trains</dd>
         </div>
       </dl>
-      <label for="train-import-mode">Import mode</label>
-      <select id="train-import-mode" [value]="mode()" [disabled]="busy()" (change)="changeMode($event)">
-        <option value="merge">Merge</option>
-        <option value="replace-all">Replace all train data</option>
-      </select>
-      @if (mode() === 'merge') {
-        <p class="help">Matching train numbers are replaced. Other saved trains remain.</p>
-      } @else {
+      @if (count()) {
         <p class="notice">
-          All current train schedules will be removed and replaced by this backup, including when the backup is empty.
+          Restoring this backup will replace the existing Train data on this device, including when the backup is empty.
         </p>
       }
       <div class="actions">
         <ion-button fill="clear" [disabled]="busy()" (click)="cancelPreview()">Cancel</ion-button>
-        <ion-button [disabled]="busy()" (click)="restoreBackup()">Restore Backup</ion-button>
+        <ion-button [disabled]="busy()" (click)="restoreBackup()">{{
+          count() ? 'Replace & Restore' : 'Restore Train Backup'
+        }}</ion-button>
       </div>
     </section>
   }

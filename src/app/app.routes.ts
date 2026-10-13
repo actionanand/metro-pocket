@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { webTrainGuideGuard } from './core/platform/web-train-guide.guard';
 
 export const routes: Routes = [
   {
@@ -12,6 +13,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/trains/train-detail.page').then(m => m.TrainDetailPage),
   },
   { path: 'trains', loadComponent: () => import('./features/trains/trains.page').then(m => m.TrainsPage) },
+  {
+    path: 'train-guide',
+    canMatch: [webTrainGuideGuard],
+    loadComponent: () => import('./features/trains/train-guide.page').then(m => m.TrainGuidePage),
+  },
   {
     path: 'offline-data',
     loadComponent: () => import('./features/offline-data/offline-data.page').then(m => m.OfflineDataPage),

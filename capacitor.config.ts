@@ -4,6 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.actionanand.metropocket.app',
   appName: 'MetroPocket',
   webDir: 'www',
+  loggingBehavior: 'none',
   server: { androidScheme: 'https' },
   android: { backgroundColor: '#f4faf7' },
 };

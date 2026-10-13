@@ -4,9 +4,12 @@ Trains are private, mutable user data, separate from read-only public Metro/TV p
 There is no railway API, live timetable, bundled real train data, upload, analytics,
 or location access. Offline Data and `PackType = 'metro' | 'tv'` are unchanged.
 
-## Import one train per CSV
+## Web/PWA: import one train per CSV
 
-Open **Trains → Import Train CSV**. Parsing/validation displays a preview; only
+Open **Trains → Import Train CSV** on Web/PWA. The bundled **Train CSV Guide** is
+available from Trains and Settings at `/train-guide`, including offline. Android
+cannot import CSV, download the CSV template, or open the guide; direct guide links
+redirect to Settings. Parsing/validation displays a preview; only
 **Import** writes the schedule. If the train number already exists, the preview
 requires **Replace Schedule**. Cancel leaves saved data unchanged.
 
@@ -54,6 +57,18 @@ train_number,train_name,running_days,stop_sequence,station_code,station_name,arr
 Errors identify rows where possible. The UI shows the first ten errors and the
 remaining count. Invalid files never write partial schedules.
 
+## Platform behavior
+
+On Web/PWA the Home Trains card is always visible, including before the first
+import. On installed Capacitor Android it appears only when at least one train
+exists. Restore, per-train deletion, and delete-all publish the shared count and
+change signals, updating Home, Settings, and the saved list without a restart.
+Android Settings always offers Restore Train Backup, even with zero trains.
+
+Platform decisions use `AppPlatformService` and Capacitor's platform, not user-agent
+sniffing. An Android browser or PWA is still Web. CSV service calls and repository
+creation are functionally guarded as well as excluded from Android templates.
+
 ## Local SQLite persistence
 
 All trains use one writable SQLite database, logically `metropocket-user-trains`,
@@ -84,33 +99,62 @@ Unknown future schema versions fail safely without clearing user data.
 
 ## Backup and restore
 
-**Settings → Train Data** shows the local train count and supports:
+CSV creates one train on Web/PWA. **Train DB backup** transfers the entire Train
+database on every platform. It is raw SQLite, not JSON and not the internal gzip
+snapshot. There is no password, PIN, or encryption.
 
-- **Export Train Backup:** downloads `metropocket-trains-backup-YYYY-MM-DD.json` locally.
-- **Import Train Backup:** validates a JSON file (up to 20 MB) and previews its date,
-  train count, matching train numbers, and new trains before saving.
-- **Delete All Train Data:** requires explicit confirmation and does not affect public packs.
+**Settings → Train Data** provides:
 
-Backups use `format: "metropocket-trains"`, `schemaVersion: 1`, `exportedAt` (ISO
-timestamp), and a `trains` array. Each train contains its text number, optional name,
-MON–SUN day array, ISO creation/update timestamps, and every stop. Raw SQLite is not
-the migration format. Metro/TV packs are excluded.
+- **Export Train Backup:** `metropocket-trains-backup-YYYY-MM-DD.db`, MIME
+  `application/x-sqlite3`. The file starts with `SQLite format 3\0`.
+- **Restore Train Backup:** accepts local `.db`, `.sqlite`, or `.sqlite3` files
+  up to 20 MB. The filename/extension is not proof of validity.
+- **Delete All Train Data:** explicit destructive confirmation; public packs and
+  other settings remain intact.
 
-**Merge** adds new numbers, replaces matching numbers with the backup schedules,
-and preserves unrelated trains. **Replace all train data** removes current trains
-and imports only the backup; it requires an additional destructive confirmation.
-An empty backup can intentionally clear all trains in replace-all mode. Both modes
-use one atomic operation. Invalid backups (including duplicates, unknown versions,
-bad days, times, sequences, or offsets) leave current data unchanged.
+Web uses File sharing when supported, with a normal download fallback. Cancelling
+sharing does not silently download or report success. Restore uses a local file
+picker and reads binary bytes, without upload.
+
+Android uses a small Capacitor `TrainBackup` plugin generated reproducibly by
+`scripts/patch-android.mjs` and `scripts/patch-train-backup.mjs`. Storage Access
+Framework create/open document intents let the user choose a file without broad
+storage permissions. Binary bytes cross the bridge as Base64 transport only;
+the saved file is plain raw SQLite. No crypto or extra native npm dependency is
+used. Run the existing Android sync/patch workflow to include the plugin in an APK.
+Capacitor bridge logging is disabled so debug builds do not print backup payloads.
+
+### Validation and confirmation
+
+The shared validator checks the magic header, successful open, v1 schema,
+MetroPocket `databaseName = metropocket-user-trains` identity, optional matching
+`format`, metadata, expected columns/types/primary keys, cascading foreign keys,
+SQLite integrity, foreign-key integrity, and every train/stop value. Unexpected
+tables, views, or triggers are rejected. Existing v1 app databases with the original
+identity metadata remain compatible. Export adds `format` and `exportedAt`
+inside the backup database without changing the saved snapshot.
+
+After validation, the preview shows filename, train count, station-stop count,
+current-device train count, and export time when present. No writes occur yet.
+Cancel preserves current data. Restore is always a full replacement, never a
+merge. When trains already exist, **Replace & Restore** warns that all existing
+Train data will be replaced. Empty backups can intentionally clear Train data.
+
+Restore revalidates the candidate, checks that local data has not changed since
+preview, gzips its raw SQLite bytes, and replaces the IndexedDB record in one
+readwrite transaction. Before that transaction commits, it rereads the candidate
+record, reopens the stored bytes with the shared engine, and validates again.
+Failure aborts the same transaction, retaining the exact old record (or no record
+when storage was empty). Success/count updates happen only after commit.
 
 ## Privacy and durability
 
-CSV parsing, template generation, SQL reads/writes, and backup handling work locally
-after the app assets load. No train code calls a network API. Downloads use browser/PWA
-file download and do not require a new Capacitor plugin. Browser/WebView download
-handling varies; browser/PWA is the supported baseline for exporting backups.
+Train CSV parsing (Web only), guide/template generation, SQLite queries, and backup
+validation work locally after app assets load. No train code uses a railway API,
+server, cloud upload, analytics, location, or console logging of schedules/bytes.
+Web and Android use the same schema and backup bytes.
 
 Normal refreshes and restarts retain IndexedDB data, but browser eviction, clearing
-site/app storage, or uninstalling can remove it. Export and keep a backup outside
-the app before changing devices or clearing storage. Imported contents are never
-logged. A backup contains private user data; share it only when you choose to.
+site/app storage, or uninstalling can remove it. Export a backup outside the app
+before changing devices or clearing storage. Android backup/transfer rules remain
+disabled; manual Train DB export/restore is the transfer mechanism.

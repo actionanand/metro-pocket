@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 const script = path.resolve('scripts/bump-android-version.js');
+const { patchTrainBackup } = await import('./patch-train-backup.mjs');
 test('Android version increments and semantic bumps are valid', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'metropocket-test-'));
   try {
@@ -94,6 +95,8 @@ test('Android branding patch is idempotent and retains padded artwork and privac
       'android/app/proguard-rules.pro',
       'android/app/src/main/res/values/styles.xml',
       'android/app/src/main/res/values-night/styles.xml',
+      'android/app/src/main/java/com/actionanand/metropocket/app/MainActivity.java',
+      'android/app/src/main/java/com/actionanand/metropocket/app/TrainBackupPlugin.java',
     ];
     const before = files.map(file => readFileSync(path.join(root, file), 'utf8'));
     run();
@@ -108,6 +111,40 @@ test('Android branding patch is idempotent and retains padded artwork and privac
     assert.match(before[0], /allowBackup="false"/);
     assert.match(before[0], /usesCleartextTraffic="false"/);
     assert.match(before[3], /metropocket_splash_icon/);
+  } finally {
+    assert.equal(path.dirname(root), path.resolve(tmpdir()));
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+test('Train backup patch registers a native document plugin reproducibly and preserves existing activity code', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'metropocket-train-native-test-'));
+  const activityFile = path.join(root, 'app/src/main/java/com/actionanand/metropocket/app/MainActivity.java');
+  mkdirSync(path.dirname(activityFile), { recursive: true });
+  const activity = `package com.actionanand.metropocket.app;
+import com.getcapacitor.BridgeActivity;
+public class MainActivity extends BridgeActivity {
+  @Override public void onCreate(android.os.Bundle state) {
+    super.onCreate(state);
+    String preserved = "Existing activity setup";
+  }
+}`;
+  try {
+    writeFileSync(activityFile, activity);
+    await patchTrainBackup(root, 'com.actionanand.metropocket.app');
+    const patched = readFileSync(activityFile, 'utf8');
+    assert.ok(patched.includes('Existing activity setup'));
+    assert.ok(patched.indexOf('registerPlugin(TrainBackupPlugin.class)') < patched.indexOf('super.onCreate'));
+    await patchTrainBackup(root, 'com.actionanand.metropocket.app');
+    assert.equal(readFileSync(activityFile, 'utf8'), patched);
+    const plugin = readFileSync(path.join(path.dirname(activityFile), 'TrainBackupPlugin.java'), 'utf8');
+    assert.match(plugin, /ACTION_CREATE_DOCUMENT/);
+    assert.match(plugin, /ACTION_OPEN_DOCUMENT/);
+    assert.match(plugin, /@ActivityCallback/);
+    assert.match(plugin, /MAX_BYTES = 20 \* 1024 \* 1024/);
+    assert.match(plugin, /cancelled/);
+    assert.match(plugin, /application\/x-sqlite3/);
+    assert.doesNotMatch(plugin, /WRITE_EXTERNAL_STORAGE|MANAGE_EXTERNAL_STORAGE|HttpClient|password|Cipher/);
+    assert.match(readFileSync('capacitor.config.ts', 'utf8'), /loggingBehavior:\s*'none'/);
   } finally {
     assert.equal(path.dirname(root), path.resolve(tmpdir()));
     rmSync(root, { recursive: true, force: true });

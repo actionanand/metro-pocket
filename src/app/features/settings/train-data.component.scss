@@ -46,18 +46,5 @@ dl > div {
 }
 dd {
   margin: 2px 0 0;
-}
-label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-select {
-  width: 100%;
-  padding: 10px;
-  min-height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--mp-border);
-  background: var(--mp-card);
-  color: var(--ion-text-color);
+  overflow-wrap: anywhere;
 }

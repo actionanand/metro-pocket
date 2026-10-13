@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   IonBackButton,
@@ -11,8 +11,8 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import { TrainRepositoryService, TrainAlreadyExistsError } from '../../core/trains/train-repository.service';
-import { LocalFileService } from '../../core/trains/local-file.service';
-import { MAX_TRAIN_CSV_BYTES, parseTrainCsv, trainCsvTemplate } from '../../core/trains/train-csv';
+import { TrainCsvService } from '../../core/trains/train-csv.service';
+import { AppPlatformService } from '../../core/platform/app-platform.service';
 import { TrainValidationError } from '../../core/trains/train-validation';
 import {
   dayOffsetLabel,
@@ -40,11 +40,12 @@ import {
 })
 export class TrainsPage {
   private readonly repository = inject(TrainRepositoryService);
-  private readonly files = inject(LocalFileService);
+  private readonly csv = inject(TrainCsvService);
+  protected readonly platform = inject(AppPlatformService);
   private readonly previewPanel = viewChild<ElementRef<HTMLElement>>('previewPanel');
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
   readonly trains = signal<SavedTrainSummary[]>([]);
-  readonly total = signal(0);
+  readonly total = this.repository.trainCount.asReadonly();
   readonly search = signal('');
   readonly loading = signal(true);
   readonly storageError = signal(false);
@@ -60,6 +61,18 @@ export class TrainsPage {
   readonly daysLabel = runningDaysLabel;
   private request = 0;
 
+  constructor() {
+    let generation = this.repository.changes();
+    effect(() => {
+      const next = this.repository.changes();
+      if (next === generation) return;
+      generation = next;
+      untracked(() => {
+        void this.load();
+      });
+    });
+  }
+
   async ionViewWillEnter(): Promise<void> {
     await this.load();
   }
@@ -70,6 +83,7 @@ export class TrainsPage {
   }
 
   async selectCsv(event: Event): Promise<void> {
+    if (!this.platform.isWeb()) return;
     const input = event.target;
     if (!(input instanceof HTMLInputElement)) return;
     const file = input.files?.[0];
@@ -78,15 +92,13 @@ export class TrainsPage {
   }
 
   async prepareCsv(file: File): Promise<void> {
-    if (this.busy()) return;
+    if (this.busy() || !this.platform.isWeb()) return;
     this.busy.set(true);
     this.cancelPreview();
     this.status.set('');
     this.issues.set([]);
     try {
-      if (file.size > MAX_TRAIN_CSV_BYTES)
-        throw new TrainValidationError(['CSV is too large. Choose a file of at most 2 MB.']);
-      const schedule = parseTrainCsv(await file.text());
+      const schedule = await this.csv.prepare(file);
       this.existing.set(!!(await this.repository.get(schedule.trainNumber)));
       this.preview.set(schedule);
       requestAnimationFrame(() => this.previewPanel()?.nativeElement.focus());
@@ -105,7 +117,7 @@ export class TrainsPage {
 
   async importPreview(): Promise<void> {
     const schedule = this.preview();
-    if (!schedule || this.busy()) return;
+    if (!schedule || this.busy() || !this.platform.isWeb()) return;
     this.busy.set(true);
     this.issues.set([]);
     try {
@@ -122,8 +134,9 @@ export class TrainsPage {
   }
 
   downloadTemplate(): void {
+    if (!this.platform.isWeb()) return;
     try {
-      this.files.download(trainCsvTemplate(), 'metropocket-train-template.csv', 'text/csv;charset=utf-8');
+      this.csv.downloadTemplate();
       this.status.set('CSV template download started. Example data demonstrates the CSV format only.');
     } catch (cause) {
       this.showError(cause);
@@ -143,10 +156,9 @@ export class TrainsPage {
     this.loading.set(true);
     this.storageError.set(false);
     try {
-      const [trains, total] = await Promise.all([this.repository.list(this.search()), this.repository.count()]);
+      const [trains] = await Promise.all([this.repository.list(this.search()), this.repository.count()]);
       if (request !== this.request) return;
       this.trains.set(trains);
-      this.total.set(total);
     } catch (cause) {
       if (request === this.request) {
         this.storageError.set(true);

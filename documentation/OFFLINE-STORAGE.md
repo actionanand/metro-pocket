@@ -6,7 +6,10 @@ Private train schedules use a separate `metropocket-user-data` IndexedDB databas
 `sqlite` store, `trains` key. One gzip-compressed writable SQLite snapshot contains
 all trains. Writes commit in a disposable database before replacing the durable
 snapshot atomically; failures keep the previous snapshot. Train backups are
-versioned JSON, separate from downloadable Metro/TV packs. See [Train schedules](TRAIN-SCHEDULES.md).
+raw SQLite `.db` files, separate from downloadable Metro/TV packs. Restore validates
+the complete candidate, then reopens the stored snapshot before the IndexedDB
+transaction commits; failure aborts and preserves the prior record. Web and Android
+share the same schema and validation. See [Train schedules](TRAIN-SCHEDULES.md).
 
 Pack bytes stay compressed in IndexedDB and are not bundled with Angular chunks. On Metro entry, the repository reads the selected installed pack without downloading it again. fflate decompresses it in memory; sql.js opens it read-only, the repository maps rows to MetroNetwork, and the database is always closed. One selected mapped network is cached by pack ID, version, installation date and checksum, so replacement or switching packs invalidates the cache.
 
