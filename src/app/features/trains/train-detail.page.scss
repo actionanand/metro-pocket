@@ -1,0 +1,85 @@
+.page {
+  max-width: 720px;
+  margin: auto;
+  padding: 28px 20px 48px;
+}
+.eyebrow,
+.help {
+  color: var(--mp-muted);
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+h1 {
+  font-size: 36px;
+  margin-block: 8px;
+  color: var(--mp-primary);
+}
+h2 {
+  font-size: 22px;
+  margin-top: 30px;
+}
+.name {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.help {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin-block: 20px 30px;
+}
+.timeline li {
+  display: flex;
+  gap: 16px;
+  padding-bottom: 26px;
+  position: relative;
+}
+.timeline li:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 21px;
+  top: 44px;
+  bottom: 0;
+  width: 2px;
+  background: var(--mp-border);
+}
+.sequence {
+  flex: 0 0 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--mp-surface-green);
+  color: var(--mp-primary);
+  font-weight: 700;
+}
+.station {
+  min-width: 0;
+  flex: 1;
+}
+h3 {
+  font-size: 19px;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+.station p {
+  margin-block: 4px;
+}
+.times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.times strong {
+  font-variant-numeric: tabular-nums;
+}
+.day {
+  color: var(--mp-primary);
+  font-weight: 700;
+}

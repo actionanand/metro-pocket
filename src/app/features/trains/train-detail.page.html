@@ -1,0 +1,55 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/trains"></ion-back-button></ion-buttons>
+    <ion-title>Train schedule</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <main class="page">
+    @if (loading()) {
+    <p role="status">Loading train schedule…</p>
+    } @if (error()) {
+    <p role="alert">{{ error() }}</p>
+    } @if (train(); as saved) {
+    <header>
+      <p class="eyebrow">SAVED ON THIS DEVICE</p>
+      <h1>{{ saved.trainNumber }}</h1>
+      <p class="name">{{ saved.trainName || 'Train name not provided' }}</p>
+      <p>{{ daysLabel(saved.runningDays) }}</p>
+      <p class="help">
+        User-imported timetable. Verify important details with the operator; this is not live information.
+      </p>
+    </header>
+    <h2>Station timetable</h2>
+    <ol class="timeline">
+      @for (stop of saved.stops; track stop.sequence) {
+      <li>
+        <span class="sequence" aria-label="Stop sequence">{{ stop.sequence.toString().padStart(2, '0') }}</span>
+        <div class="station">
+          <h3>{{ stop.stationName }}</h3>
+          @if (stop.stationCode) {
+          <p class="help">{{ stop.stationCode }}</p>
+          }
+          <div class="times">
+            @if (stop.arrivalTime) {
+            <p>Arrive <strong>{{ stop.arrivalTime }}</strong></p>
+            } @if (stop.departureTime) {
+            <p>Depart <strong>{{ stop.departureTime }}</strong></p>
+            }
+          </div>
+          @if (stop.dayOffset) {
+          <p class="day">{{ offsetLabel(stop.dayOffset) }}</p>
+          }
+        </div>
+      </li>
+      }
+    </ol>
+    <ion-button color="danger" fill="outline" [disabled]="busy()" (click)="deleteTrain()"
+      >Delete train {{ saved.trainNumber }}</ion-button
+    >
+    } @else if (!loading() && !error()) {
+    <h1>Train not found</h1>
+    <p>This schedule may have been deleted from this device.</p>
+    }
+  </main>
+</ion-content>

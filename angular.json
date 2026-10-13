@@ -40,6 +40,7 @@
             ],
             "styles": ["src/global.scss", "src/theme/variables.scss"],
             "scripts": [],
+            "allowedCommonJsDependencies": ["papaparse"],
             "browser": "src/main.ts"
           },
           "configurations": {

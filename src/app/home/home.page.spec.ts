@@ -17,4 +17,9 @@ describe('HomePage', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+  it('shows Metro, TV Channels and Trains with lazy feature links', () => {
+    const links = Array.from(fixture.nativeElement.querySelectorAll('.feature')) as HTMLAnchorElement[];
+    expect(links.map(link => link.getAttribute('href'))).toEqual(['/metro', '/tv', '/trains']);
+    expect(links.map(link => link.querySelector('strong')?.textContent)).toEqual(['Metro', 'TV Channels', 'Trains']);
+  });
 });

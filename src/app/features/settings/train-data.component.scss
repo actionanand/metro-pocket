@@ -1,0 +1,63 @@
+.train-data {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid var(--mp-border);
+  border-radius: 20px;
+  background: var(--mp-card);
+}
+h2 {
+  margin-top: 0;
+  font-size: 22px;
+}
+.help,
+dt {
+  color: var(--mp-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 16px;
+}
+ion-button {
+  margin: 0;
+  min-height: 44px;
+  white-space: normal;
+}
+.notice {
+  border: 1px solid var(--mp-warning);
+  color: var(--mp-warning);
+  padding: 12px;
+  border-radius: 12px;
+  line-height: 1.5;
+}
+.notice ul {
+  padding-left: 20px;
+  margin: 0;
+}
+.preview {
+  border-top: 1px solid var(--mp-border);
+  padding-top: 12px;
+}
+dl > div {
+  margin-block: 10px;
+}
+dd {
+  margin: 2px 0 0;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+select {
+  width: 100%;
+  padding: 10px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--mp-border);
+  background: var(--mp-card);
+  color: var(--ion-text-color);
+}

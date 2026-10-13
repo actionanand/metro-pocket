@@ -54,6 +54,7 @@
     "@ionic/angular": "^9.0.0",
     "fflate": "^0.8.3",
     "ionicons": "^8.1.0",
+    "papaparse": "^5.7.0",
     "rxjs": "~7.8.0",
     "sql.js": "^1.14.2",
     "tslib": "^2.3.0"
@@ -66,9 +67,11 @@
     "@capacitor/cli": "8.5.0",
     "@eslint/js": "^10.0.1",
     "@ionic/angular-toolkit": "^13.0.0",
+    "@types/papaparse": "^5.5.2",
     "@types/sql.js": "^1.4.11",
     "angular-eslint": "22.0.0",
     "eslint": "^10.3.0",
+    "fake-indexeddb": "^6.2.5",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
     "npm-run-all": "^4.1.5",
@@ -78,7 +81,7 @@
     "typescript-eslint": "8.60.1",
     "vitest": "^4.0.8"
   },
-  "description": "Offline-first metro route and TV channel finder for Web and Android.",
+  "description": "Offline-first metro routes, TV channels and private train schedules for Web and Android.",
   "engines": {
     "node": ">=22.22.3 || >=24.15.0 || >=26.0.0"
   }

@@ -71,7 +71,8 @@ h2 {
   border: 1px solid var(--mp-border);
   min-height: 93px;
 }
-.feature.metro {
+.feature.metro,
+.feature.trains {
   border-left: 5px solid var(--mp-primary-strong);
 }
 .feature.tv {
@@ -85,7 +86,8 @@ h2 {
   border-radius: 16px;
   font-size: 25px;
 }
-.metro .feature-icon {
+.metro .feature-icon,
+.trains .feature-icon {
   background: var(--mp-surface-green);
   color: var(--mp-primary-strong);
 }

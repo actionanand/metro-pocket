@@ -1,19 +1,13 @@
-import { Injectable, InjectionToken, inject } from '@angular/core';
-import type { Database, SqlJsStatic, SqlValue } from 'sql.js';
+import { Injectable, inject } from '@angular/core';
+import type { BindParams, Database, SqlValue } from 'sql.js';
+import { SqliteEngineService } from './sqlite-engine.service';
 
-export function sqliteWasmUrl(baseUri: string): string {
-  return new URL('assets/sqlite/sql-wasm.wasm', baseUri).href;
-}
-export const SQLITE_LOADER = new InjectionToken<() => Promise<SqlJsStatic>>('SQLite engine loader', {
-  providedIn: 'root',
-  factory: () => () =>
-    import('sql.js').then(module => module.default({ locateFile: () => sqliteWasmUrl(document.baseURI) })),
-});
+// Keep the existing injection seam and URL helper compatible with public-pack consumers.
+export { SQLITE_LOADER, sqliteWasmUrl } from './sqlite-engine.service';
 
 @Injectable({ providedIn: 'root' })
 export class SqlitePackReaderService {
-  private engine?: Promise<SqlJsStatic>;
-  private readonly loader = inject(SQLITE_LOADER);
+  private readonly engine = inject(SqliteEngineService);
 
   async read<T>(compressed: ArrayBuffer, consume: (database: Database) => T): Promise<T> {
     let database: Database | undefined;
@@ -24,7 +18,7 @@ export class SqlitePackReaderService {
       if (new TextDecoder().decode(bytes.subarray(0, 16)) !== 'SQLite format 3\0') {
         throw new Error('The pack does not contain a SQLite database.');
       }
-      const engine = await this.initialize();
+      const engine = await this.engine.initialize();
       database = new engine.Database(bytes);
       database.run('PRAGMA query_only = ON');
       return consume(database);
@@ -36,20 +30,13 @@ export class SqlitePackReaderService {
       database?.close();
     }
   }
-
-  private initialize(): Promise<SqlJsStatic> {
-    this.engine ??= this.loader().catch(cause => {
-      this.engine = undefined;
-      throw cause;
-    });
-    return this.engine;
-  }
 }
 
 /** Explicit SQL projections are converted by column name, never by table order. */
-export function queryRows(database: Database, sql: string): Record<string, SqlValue>[] {
+export function queryRows(database: Database, sql: string, bindings?: BindParams): Record<string, SqlValue>[] {
   const statement = database.prepare(sql);
   try {
+    if (bindings) statement.bind(bindings);
     const rows: Record<string, SqlValue>[] = [];
     while (statement.step()) rows.push(statement.getAsObject());
     return rows;

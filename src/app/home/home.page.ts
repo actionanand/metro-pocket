@@ -2,7 +2,14 @@ import { Component } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { IonButton, IonContent, IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { arrowForwardOutline, cloudDownloadOutline, settingsOutline, trainOutline, tvOutline } from 'ionicons/icons';
+import {
+  arrowForwardOutline,
+  cloudDownloadOutline,
+  settingsOutline,
+  trainOutline,
+  tvOutline,
+  trainSharp,
+} from 'ionicons/icons';
 import { RouterLink } from '@angular/router';
 
 @Component({
@@ -13,6 +20,6 @@ import { RouterLink } from '@angular/router';
 })
 export class HomePage {
   constructor() {
-    addIcons({ arrowForwardOutline, cloudDownloadOutline, settingsOutline, trainOutline, tvOutline });
+    addIcons({ arrowForwardOutline, cloudDownloadOutline, settingsOutline, trainOutline, tvOutline, trainSharp });
   }
 }

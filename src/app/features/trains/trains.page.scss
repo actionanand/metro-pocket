@@ -1,0 +1,112 @@
+.page {
+  max-width: 720px;
+  margin: auto;
+  padding: 28px 20px 48px;
+}
+.eyebrow,
+.help,
+.intro,
+small,
+dt {
+  color: var(--mp-muted);
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+h1 {
+  font-size: 32px;
+  letter-spacing: -0.03em;
+  margin: 8px 0;
+}
+h2 {
+  font-size: 22px;
+}
+.intro,
+.help,
+.notice {
+  line-height: 1.5;
+}
+.help {
+  font-size: 14px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 16px;
+}
+.actions ion-button {
+  margin: 0;
+  min-height: 44px;
+  white-space: normal;
+}
+.panel {
+  padding: 20px;
+  background: var(--mp-card);
+  border: 1px solid var(--mp-border);
+  border-radius: 20px;
+}
+.preview {
+  margin-block: 24px;
+}
+.preview h2 {
+  margin-top: 0;
+}
+.train-number {
+  font-size: 24px;
+  font-weight: 700;
+  margin-block: 8px;
+}
+dl {
+  margin: 18px 0;
+}
+dl > div {
+  margin-block: 12px;
+}
+dt {
+  font-size: 14px;
+}
+dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+.notice {
+  padding: 14px;
+  border: 1px solid var(--mp-warning);
+  border-radius: 12px;
+  color: var(--mp-warning);
+}
+.notice ul {
+  padding-left: 20px;
+  margin: 0;
+}
+.empty {
+  margin-block: 20px;
+  padding: 24px;
+  border: 1px dashed var(--mp-border);
+  border-radius: 20px;
+}
+.train-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.train {
+  display: grid;
+  gap: 5px;
+  text-decoration: none;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.train:hover {
+  border-color: var(--mp-primary);
+}
+.train-number {
+  color: var(--mp-primary);
+}
+a {
+  color: var(--mp-primary);
+}

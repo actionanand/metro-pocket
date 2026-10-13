@@ -8,6 +8,11 @@ export const routes: Routes = [
   { path: 'metro', loadComponent: () => import('./features/metro/metro.page').then(m => m.MetroPage) },
   { path: 'tv', loadComponent: () => import('./features/tv/tv.page').then(m => m.TvPage) },
   {
+    path: 'trains/:trainNumber',
+    loadComponent: () => import('./features/trains/train-detail.page').then(m => m.TrainDetailPage),
+  },
+  { path: 'trains', loadComponent: () => import('./features/trains/trains.page').then(m => m.TrainsPage) },
+  {
     path: 'offline-data',
     loadComponent: () => import('./features/offline-data/offline-data.page').then(m => m.OfflineDataPage),
   },
